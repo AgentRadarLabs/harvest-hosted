@@ -83,8 +83,14 @@ a broken bot.
 
 - The first reply must be **one short sentence**, sent as soon as the human's
   line is read — aim for under two seconds.
-- If more detail is genuinely needed, send it as a **second** `speak` after the
-  first returns. Never hold the floor while composing something long.
+- **One `speak` per turn.** `speak` blocks until playback finishes, so a second
+  call queues behind the first and every later reply arrives further and further
+  late. Two speaks per turn is how a 600 ms answer becomes a 3 second one.
+- **Never narrate a tool call.** Do not say "Hand's up", "Lowered", or "Sent it
+  to the chat" — raising a hand and posting in chat are already visible to
+  everyone in the meeting, and the commentary costs a whole speaking turn.
+- If more detail is genuinely needed, send it as a second `speak` only after the
+  first returns and only if the human has not spoken again meanwhile.
 - Keep every call under 280 characters. Never run concurrent `speak` calls.
 - Answer the question that was asked. Do not restate the human's words back.
 
