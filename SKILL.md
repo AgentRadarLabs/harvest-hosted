@@ -93,9 +93,14 @@ a broken bot.
 
 - The first reply must be **one short sentence**, sent as soon as the human's
   line is read — aim for under two seconds.
-- **One `speak` per turn.** `speak` blocks until playback finishes, so a second
-  call queues behind the first and every later reply arrives further and further
-  late. Two speaks per turn is how a 600 ms answer becomes a 3 second one.
+- **One `speak` per turn.** A second call queues behind the first, and every
+  later reply arrives further and further late. Two speaks per turn is how a
+  600 ms answer becomes a 3 second one.
+- **Pass `await_playback: false` when you want to keep listening while you talk.**
+  By default `speak` returns only after playback finishes, which leaves the agent
+  deaf for the whole length of its own reply — unable to notice it was
+  interrupted, unable to revise. With `await_playback: false` it returns as soon
+  as the words start playing, so go straight back to `next_utterance`.
 - **Never narrate a tool call.** Do not say "Hand's up", "Lowered", or "Sent it
   to the chat" — raising a hand and posting in chat are already visible to
   everyone in the meeting, and the commentary costs a whole speaking turn.
