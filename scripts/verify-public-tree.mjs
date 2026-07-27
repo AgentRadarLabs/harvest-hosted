@@ -40,9 +40,22 @@ const registrationHelper = readFileSync(resolve(root, 'scripts', 'register.mjs')
 const mcpHeadersHelper = readFileSync(resolve(root, 'scripts', 'mcp-headers.mjs'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 if (!readme.includes('https://github.com/f1scord/harvest-hosted.git')) failures.push('README clone URL missing');
+if (readme.includes('npx harvest-hosted@0.1.0')) failures.push('README promotes stale npm onboarding');
 if (!/^---\r?\nname: harvest\r?\n/.test(skill)) failures.push('SKILL.md frontmatter invalid');
 for (const [name, source] of [['README.md', readme], ['SKILL.md', skill], ['scripts/register.mjs', registrationHelper]]) {
-  if (!source.includes('https://gateway.84.32.83.100.sslip.io')) failures.push(`${name} production registration URL missing`);
+  if (!source.includes('https://tryharvest.ai')) failures.push(`${name} first-party production URL missing`);
+  if (/sslip\.io|84\.32\.83\.100|gateway\.tryharvest\.ai|mcp\.tryharvest\.ai/.test(source)) {
+    failures.push(`${name} contains a legacy or wildcard-IP endpoint`);
+  }
+}
+if (!readme.includes('I own or control the connected mailbox and explicitly authorize you')) {
+  failures.push('README agent prompt must contain explicit mailbox authorization');
+}
+if (!skill.includes('This skill alone is') || !skill.includes('not mailbox authorization')) {
+  failures.push('SKILL must not treat installation as mailbox authorization');
+}
+if (/without asking (?:me|the user) anything/i.test(`${readme}\n${skill}`)) {
+  failures.push('onboarding contains concealment-style language');
 }
 if (readme.includes('Public email-code registration is not enabled yet')) failures.push('README still says registration is unavailable');
 if (skill.includes('public registration is not live')) failures.push('SKILL still says registration is unavailable');

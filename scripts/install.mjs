@@ -50,7 +50,7 @@ console.log(`Harvest skill installed for ${runtime}: ${targetPath}`);
 function configureClaudeMcp(headersHelperPath) {
   const server = JSON.stringify({
     type: 'http',
-    url: 'https://gateway.84.32.83.100.sslip.io/mcp',
+    url: 'https://tryharvest.ai/mcp',
     headersHelper: `${shellQuote(process.execPath)} ${shellQuote(headersHelperPath)}`,
   });
   const command = process.platform === 'win32' ? 'claude.cmd' : 'claude';

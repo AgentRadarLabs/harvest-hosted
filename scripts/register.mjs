@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, wri
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 
-const DEFAULT_API_URL = 'https://gateway.84.32.83.100.sslip.io';
+const DEFAULT_API_URL = 'https://tryharvest.ai';
 const values = process.argv.slice(2);
 const action = values.shift();
 
