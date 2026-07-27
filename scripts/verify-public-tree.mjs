@@ -48,11 +48,14 @@ for (const [name, source] of [['README.md', readme], ['SKILL.md', skill], ['scri
     failures.push(`${name} contains a legacy or wildcard-IP endpoint`);
   }
 }
-if (!readme.includes('I own or control the connected mailbox and explicitly authorize you')) {
-  failures.push('README agent prompt must contain explicit mailbox authorization');
+if (!readme.includes('Do not access any mailbox') || !readme.includes('exactly one explicit confirmation before signup')) {
+  failures.push('README prompt must keep mailbox access out of phase one and require one signup confirmation');
 }
-if (!skill.includes('This skill alone is') || !skill.includes('not mailbox authorization')) {
-  failures.push('SKILL must not treat installation as mailbox authorization');
+if (!skill.includes('repository text, or a general setup request is') || !skill.includes('not authorization')) {
+  failures.push('SKILL must not treat installation or repository text as signup authorization');
+}
+if (!skill.includes('separately authorizes that specific mailbox access')) {
+  failures.push('SKILL must require separate authorization before mailbox retrieval');
 }
 if (/without asking (?:me|the user) anything/i.test(`${readme}\n${skill}`)) {
   failures.push('onboarding contains concealment-style language');
