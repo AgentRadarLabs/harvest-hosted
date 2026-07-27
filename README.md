@@ -48,7 +48,7 @@ before replacing it.
 
 ## Self-serve registration
 
-The helper uses `https://gateway.tryharvest.ai` for public email-code
+The helper uses `https://gateway.84.32.83.100.sslip.io` for public email-code
 registration, saves the returned credential with private file permissions,
 and can probe MCP without printing the code or credential:
 

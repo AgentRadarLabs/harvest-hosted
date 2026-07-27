@@ -42,7 +42,7 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
 if (!readme.includes('https://github.com/f1scord/harvest-hosted.git')) failures.push('README clone URL missing');
 if (!/^---\r?\nname: harvest\r?\n/.test(skill)) failures.push('SKILL.md frontmatter invalid');
 for (const [name, source] of [['README.md', readme], ['SKILL.md', skill], ['scripts/register.mjs', registrationHelper]]) {
-  if (!source.includes('https://gateway.tryharvest.ai')) failures.push(`${name} production registration URL missing`);
+  if (!source.includes('https://gateway.84.32.83.100.sslip.io')) failures.push(`${name} production registration URL missing`);
 }
 if (readme.includes('Public email-code registration is not enabled yet')) failures.push('README still says registration is unavailable');
 if (skill.includes('public registration is not live')) failures.push('SKILL still says registration is unavailable');

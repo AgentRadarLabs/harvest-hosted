@@ -25,7 +25,7 @@ try {
   mkdirSync(binDirectory, { recursive: true });
   installFakeClaude(binDirectory);
   writeFileSync(harvestConfig, `${JSON.stringify({
-    api_url: 'https://gateway.tryharvest.ai',
+    api_url: 'https://gateway.84.32.83.100.sslip.io',
     token,
   })}\n`, { mode: 0o600 });
 
@@ -56,7 +56,7 @@ try {
       'mcp', 'add-json', '--scope', 'user', 'harvest',
     ])) throw new Error(`unexpected Claude CLI arguments: ${JSON.stringify(args)}`);
     const config = JSON.parse(args[5]);
-    if (config.type !== 'http' || config.url !== 'https://gateway.tryharvest.ai/mcp') {
+    if (config.type !== 'http' || config.url !== 'https://gateway.84.32.83.100.sslip.io/mcp') {
       throw new Error('Harvest MCP transport mismatch');
     }
     if (typeof config.headersHelper !== 'string' || !config.headersHelper.includes('mcp-headers.mjs')) {
