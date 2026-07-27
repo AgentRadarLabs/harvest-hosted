@@ -9,7 +9,9 @@ Give your coding agent this prompt:
 
 > Clone `https://github.com/f1scord/harvest-hosted.git`, read its root
 > `SKILL.md` completely, run the installer for your runtime, and follow the
-> skill. Do not print or commit credentials.
+> skill. Complete email-code self-registration yourself. Use authorized
+> mailbox access when available; otherwise ask me only for the six-digit code.
+> Do not open an API-key dashboard, and do not print or commit credentials.
 
 Or install it yourself:
 
@@ -57,6 +59,12 @@ node ~/.codex/skills/harvest/register.mjs send --email you@example.com
 node ~/.codex/skills/harvest/register.mjs verify --email you@example.com --code CODE_FROM_EMAIL
 node ~/.codex/skills/harvest/register.mjs probe
 ```
+
+An agent with authorized mailbox access should retrieve the newest matching
+Harvest access-code email itself and proceed without making the user copy it.
+Without mailbox access, it asks only for the six-digit code. The API key is
+minted after verification and saved locally; it is never sent in the email or
+printed.
 
 For Claude Code, the helper is under `~/.claude/skills/harvest/`. Set
 `HARVEST_REGISTRATION_API_URL` only for an explicitly approved fake or staging
