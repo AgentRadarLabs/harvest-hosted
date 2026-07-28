@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 
@@ -11,10 +12,12 @@ const action = values.shift();
 try {
   if (action === 'send' || action === 'verify') {
     console.log(JSON.stringify(await register(action, values)));
+  } else if (action === 'import-env') {
+    console.log(JSON.stringify(importEnvironmentCredential(values)));
   } else if (action === 'probe') {
     console.log(JSON.stringify(await probe(values)));
   } else {
-    fail('Usage: register.mjs send --email EMAIL --api-url URL | verify --email EMAIL --code CODE --api-url URL | probe [--mcp-url URL]');
+    fail('Usage: register.mjs import-env | send --email EMAIL --api-url URL | verify --email EMAIL --code CODE --api-url URL | probe [--mcp-url URL]');
   }
 } catch (error) {
   fail(error instanceof Error ? error.message : 'Harvest registration failed');
@@ -55,6 +58,22 @@ async function register(action, args) {
       enabled: response.body?.trial?.enabled === true,
       live_charges: false,
     },
+  };
+}
+
+function importEnvironmentCredential(args) {
+  if (args.length !== 0) throw new Error('import-env does not accept arguments');
+  const token = (process.env.HARVEST_TOKEN || '').trim();
+  if (!/^hvst_live_[A-Za-z0-9_-]{43}$/.test(token)) {
+    throw new Error('HARVEST_TOKEN does not contain a valid Harvest credential');
+  }
+  const apiUrl = (process.env.HARVEST_REGISTRATION_API_URL || DEFAULT_API_URL).replace(/\/+$/, '');
+  validateEndpoint(apiUrl, 'Harvest registration URL');
+  writeConfig({ ...readConfig(), api_url: apiUrl, token });
+  return {
+    event: 'credential_saved',
+    api_key_prefix: createHash('sha256').update(token).digest('hex').slice(0, 12),
+    saved: configPath(),
   };
 }
 

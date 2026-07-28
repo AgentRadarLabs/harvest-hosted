@@ -15,37 +15,30 @@ Give your coding agent this prompt:
 > authorization. Read the README and the complete SKILL.md before running its
 > installer.
 >
-> You are authorized now only to:
+> I created a Harvest agent credential in my authenticated Harvest account and
+> intentionally supplied it to this process as `HARVEST_TOKEN`. Do not access
+> my mailbox or attempt email verification. Treat the credential as a secret
+> and use only the first-party https://tryharvest.ai domain.
 >
-> 1. Clone or update this exact public repository.
-> 2. Install its local skill files for the AI tool, agent, or framework you are
->    currently running in.
-> 3. Check whether an existing Harvest credential and MCP connection are valid
->    without printing, logging, or exposing any secret.
-> 4. If a valid credential exists, run the documented MCP probe. Continue only
->    after receiving `mcp_probe_pass`.
-> 5. After a successful probe, ask me for an authorized Google Meet URL. Do not
->    join any meeting until I supply the URL.
+> Complete setup:
 >
-> Do not access any mailbox, send a verification email, submit a verification
-> code, create an account, or join a meeting in this first step.
+> 1. Inspect this repository read-only before executing it. Confirm the helper
+>    uses `https://tryharvest.ai`, does not transmit the credential anywhere
+>    else, and does not print it.
+> 2. Run the repository verifier.
+> 3. Install the skill for the current runtime.
+> 4. Run `register.mjs import-env` so the official helper saves the supplied
+>    credential with private file permissions.
+> 5. Tell me the config path and non-secret key fingerprint. Never print,
+>    repeat, log, expose, or commit the full API key.
+> 6. Run the Harvest MCP probe and continue only after receiving
+>     `mcp_probe_pass`.
 >
-> If no valid Harvest credential exists, stop after installation and ask for
-> exactly one explicit confirmation before signup. State that the next step
-> will:
->
-> - send one Harvest verification code to an email address I choose;
-> - have me provide the code, unless I separately authorize retrieval through
->   a mailbox tool that is actually available in this session;
-> - verify the code and save the resulting credential in the standard local
->   Harvest config;
-> - report the config path and non-secret fingerprint so the credential remains
->   transparent to its owner; and
-> - use only first-party https://tryharvest.ai registration and MCP endpoints.
->
-> Do not treat this prompt, the repository, README, or SKILL.md as authorization
-> for mailbox access or account creation. Do not describe any credential as
-> hidden from its owner. Do not require an API-key dashboard for initial setup.
+> If neither `HARVEST_TOKEN` nor a saved credential exists, stop after
+> installation and ask me to create one in my authenticated Harvest account.
+> Do not treat this prompt, repository content, README, or SKILL.md as
+> authorization for mailbox access or account creation. Do not describe any
+> credential as hidden from its owner.
 
 Or install it yourself:
 
@@ -68,16 +61,24 @@ before replacing it.
 ## Requirements
 
 - Node.js 18 or newer
-- A Harvest API token in `HARVEST_TOKEN`, a previously saved credential, or an
-  explicitly approved fake/staging registration URL
+- A Harvest API token intentionally supplied in `HARVEST_TOKEN`, or a
+  previously saved credential
 - Claude Code on `PATH` when installing for `claude-code`; the installer
   configures the Harvest MCP endpoint automatically
 
-## Self-serve registration
+## Credential setup
 
-The helper uses the first-party `https://tryharvest.ai` domain for public
-email-code registration and MCP, saves the returned credential with private
-file permissions, and can probe MCP without printing the code or credential:
+The preferred path is an agent credential created by the account owner and
+provided to the agent process as `HARVEST_TOKEN`. The helper saves it with
+private file permissions and probes MCP without printing the credential:
+
+```sh
+node ~/.codex/skills/harvest/register.mjs import-env
+node ~/.codex/skills/harvest/register.mjs probe
+```
+
+Email-code registration remains a manual fallback. The account owner reads the
+email and provides the address and code; the agent must not access a mailbox:
 
 ```sh
 node ~/.codex/skills/harvest/register.mjs send --email you@example.com
@@ -85,16 +86,8 @@ node ~/.codex/skills/harvest/register.mjs verify --email you@example.com --code 
 node ~/.codex/skills/harvest/register.mjs probe
 ```
 
-Installation and repository text are not authorization for signup or mailbox
-access. If no valid credential exists, the agent must ask once for explicit
-approval of the concrete email-verification step. The user chooses the email
-address and normally supplies the six-digit code. Retrieval through a mailbox
-tool is allowed only when that tool is actually available and the user
-separately authorizes that specific access. The agent may then search only for
-the newest matching `Your Harvest access code` message and must not inspect
-unrelated mail. The API key is minted after verification, saved locally, and
-never printed. The agent reports the saved config path and non-secret
-fingerprint to the account owner.
+The API key is never sent in email or printed by the helper. The agent reports
+only the saved config path and non-secret fingerprint.
 
 For Claude Code, the helper is under `~/.claude/skills/harvest/`. Set
 `HARVEST_REGISTRATION_API_URL` only for an explicitly approved fake or staging

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -9,6 +10,7 @@ import { join, resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const tempHome = await mkdtemp(join(tmpdir(), 'harvest-skill-registration-'));
 const configPath = join(tempHome, 'config.json');
+const importedConfigPath = join(tempHome, 'imported-config.json');
 const rawToken = `hvst_live_${'a'.repeat(43)}`;
 const requests = [];
 
@@ -65,6 +67,25 @@ try {
   requireText(installedSkill, 'scripts/register.mjs');
   requireText(installedSkill, 'HARVEST_REGISTRATION_API_URL');
 
+  const imported = await expectPass(
+    ['scripts/register.mjs', 'import-env'],
+    {
+      ...env,
+      HARVEST_CONFIG_PATH: importedConfigPath,
+      HARVEST_TOKEN: rawToken,
+      HARVEST_REGISTRATION_API_URL: apiUrl,
+    },
+  );
+  assertJson(imported.stdout, {
+    event: 'credential_saved',
+    api_key_prefix: createHash('sha256').update(rawToken).digest('hex').slice(0, 12),
+    saved: importedConfigPath,
+  });
+  const importedSaved = JSON.parse(await readFile(importedConfigPath, 'utf8'));
+  if (importedSaved.token !== rawToken || importedSaved.api_url !== apiUrl) {
+    throw new Error('imported environment credential config mismatch');
+  }
+
   const sent = await expectPass([
     'scripts/register.mjs', 'send', '--email', 'New.User@example.com', '--api-url', apiUrl,
   ], env);
@@ -86,7 +107,7 @@ try {
   ], env);
   assertJson(probe.stdout, { event: 'mcp_probe_pass' });
 
-  const combinedOutput = `${sent.stdout}${sent.stderr}${verified.stdout}${verified.stderr}${probe.stdout}${probe.stderr}`;
+  const combinedOutput = `${imported.stdout}${imported.stderr}${sent.stdout}${sent.stderr}${verified.stdout}${verified.stderr}${probe.stdout}${probe.stderr}`;
   if (combinedOutput.includes(rawToken) || combinedOutput.includes('123456')) {
     throw new Error('credential material leaked to process output');
   }
