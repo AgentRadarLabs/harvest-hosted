@@ -39,8 +39,11 @@ const license = readFileSync(resolve(root, 'LICENSE'), 'utf8');
 const registrationHelper = readFileSync(resolve(root, 'scripts', 'register.mjs'), 'utf8');
 const mcpHeadersHelper = readFileSync(resolve(root, 'scripts', 'mcp-headers.mjs'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
-if (!readme.includes('https://github.com/f1scord/harvest-hosted.git')) failures.push('README clone URL missing');
-if (readme.includes('npx harvest-hosted@0.1.0')) failures.push('README promotes stale npm onboarding');
+const pinnedInstall = `npx --yes harvest-hosted@${packageJson.version} --runtime`;
+if (!readme.includes(pinnedInstall)) failures.push('README pinned npm install does not match package version');
+if (/git clone\s+https:\/\/github\.com\/f1scord\/harvest-hosted(?:\.git)?/i.test(readme)) {
+  failures.push('README still promotes clone-based onboarding');
+}
 if (!/^---\r?\nname: harvest\r?\n/.test(skill)) failures.push('SKILL.md frontmatter invalid');
 for (const [name, source] of [['README.md', readme], ['SKILL.md', skill], ['scripts/register.mjs', registrationHelper]]) {
   if (!source.includes('https://tryharvest.ai')) failures.push(`${name} first-party production URL missing`);
@@ -66,7 +69,9 @@ if (!skill.includes('async=true') || !skill.includes('get_join_status')) {
   failures.push('SKILL must use async join lifecycle for remote MCP clients');
 }
 if (!license.includes('All rights reserved.')) failures.push('proprietary license marker missing');
-if (packageJson.name !== 'harvest-hosted' || packageJson.version !== '0.1.0') failures.push('npm identity mismatch');
+if (packageJson.name !== 'harvest-hosted' || !/^0\.1\.[1-9]\d*$/.test(packageJson.version)) {
+  failures.push('npm identity mismatch');
+}
 if (packageJson.license !== 'UNLICENSED') failures.push('npm package must remain proprietary');
 
 const npmCommand = process.platform === 'win32' ? (process.env.ComSpec || 'cmd.exe') : 'npm';

@@ -1,6 +1,6 @@
 {
   "name": "harvest-hosted",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Install the proprietary Harvest meeting skill for supported agent runtimes",
   "license": "UNLICENSED",
   "type": "module",
