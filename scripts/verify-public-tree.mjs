@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const allowedTopLevel = new Set([
-  '.git', '.gitignore', 'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'scripts',
+  '.git', '.gitignore', 'CLAUDE.md', 'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'scripts',
   'package.json',
 ]);
 const secretPatterns = [

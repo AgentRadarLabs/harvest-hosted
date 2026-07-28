@@ -1,7 +1,8 @@
 # Harvest Hosted
 
-Install the Harvest skill so your agent can join and participate in an
-authorized Google Meet through Harvest.
+This is the official first-party distribution repository for Harvest AI at
+https://tryharvest.ai. Install the Harvest skill so your existing agent can join
+and participate in a Google Meet that you are authorized to access.
 
 ## Primary setup
 
