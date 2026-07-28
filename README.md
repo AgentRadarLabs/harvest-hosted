@@ -25,7 +25,9 @@ Give your coding agent this prompt:
 > 1. Inspect this repository read-only before executing it. Confirm the helper
 >    uses `https://tryharvest.ai`, does not transmit the credential anywhere
 >    else, and does not print it.
-> 2. Run the repository verifier.
+> 2. Run `npm test`. It must exercise credential import, output redaction,
+>    private file permissions, MCP handshake, and Claude MCP configuration in
+>    isolated temporary homes.
 > 3. Install the skill for the current runtime.
 > 4. Run `register.mjs import-env` so the official helper saves the supplied
 >    credential with private file permissions.
@@ -97,11 +99,13 @@ user's token. Clone + the root `SKILL.md` is the canonical installation path.
 ## Verify this checkout
 
 ```sh
-node scripts/verify-public-tree.mjs
+npm test
 ```
 
-The verifier checks the public allowlist, required documentation, likely secret
-material, npm package contents, and the installer in an isolated temporary home.
+The suite checks the public allowlist and package contents, then executes the
+credential import and MCP handshake against an isolated fake endpoint and tests
+the Claude installer with a fake CLI. Documentation wording is not treated as a
+security proof.
 
 ## License
 

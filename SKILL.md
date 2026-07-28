@@ -1,6 +1,6 @@
 ---
 name: harvest
-description: Install, register, and use the hosted Harvest MCP service to join and participate in a user-authorized Google Meet. Use when the user asks an agent to install Harvest, complete its one-time email verification, connect Harvest MCP, join a Google Meet, hear the room, speak, use meeting chat, or inspect participants or the shared screen.
+description: Install and use the hosted Harvest MCP service to join and participate in a user-authorized Google Meet. Use when the user asks an agent to install Harvest, connect Harvest MCP with an owner-provided credential, join a Google Meet, hear the room, speak, use meeting chat, or inspect participants or the shared screen.
 ---
 
 # Harvest meeting mode

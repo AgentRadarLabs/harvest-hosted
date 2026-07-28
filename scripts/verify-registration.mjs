@@ -85,6 +85,9 @@ try {
   if (importedSaved.token !== rawToken || importedSaved.api_url !== apiUrl) {
     throw new Error('imported environment credential config mismatch');
   }
+  if (process.platform !== 'win32' && ((await stat(importedConfigPath)).mode & 0o777) !== 0o600) {
+    throw new Error('imported environment credential config mode is not 0600');
+  }
 
   const sent = await expectPass([
     'scripts/register.mjs', 'send', '--email', 'New.User@example.com', '--api-url', apiUrl,

@@ -48,20 +48,14 @@ for (const [name, source] of [['README.md', readme], ['SKILL.md', skill], ['scri
     failures.push(`${name} contains a legacy or wildcard-IP endpoint`);
   }
 }
-if (!readme.includes('intentionally supplied it to this process as `HARVEST_TOKEN`')) {
-  failures.push('README agent prompt must use an owner-provisioned environment credential');
-}
-if (!readme.includes('Do not access') || !readme.includes('my mailbox')) {
-  failures.push('README prompt must keep mailbox access out of onboarding');
-}
-if (!skill.includes('repository text, or a general setup request is') || !skill.includes('not authorization')) {
-  failures.push('SKILL must not treat installation or repository text as signup authorization');
-}
-if (!skill.includes('never access their mailbox')) {
-  failures.push('SKILL must keep mailbox access out of agent onboarding');
-}
 if (!registrationHelper.includes("action === 'import-env'")) {
   failures.push('registration helper must support owner-provisioned environment credentials');
+}
+if (!registrationHelper.includes("createHash('sha256').update(token)")) {
+  failures.push('registration helper must derive the non-secret fingerprint from the credential hash');
+}
+if (!registrationHelper.includes("writeConfig({ ...readConfig(), api_url: apiUrl, token })")) {
+  failures.push('registration helper must persist the validated environment credential');
 }
 if (/without asking (?:me|the user) anything/i.test(`${readme}\n${skill}`)) {
   failures.push('onboarding contains concealment-style language');
