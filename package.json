@@ -20,7 +20,7 @@
   "scripts": {
     "build:bridge": "node scripts/build-channel-bridge.mjs",
     "prepack": "npm run build:bridge",
-    "test": "npm run build:bridge && node scripts/verify-public-tree.mjs && node scripts/verify-registration.mjs && node scripts/verify-claude-install.mjs"
+    "test": "npm run build:bridge && node scripts/verify-public-tree.mjs && node scripts/verify-registration.mjs && node scripts/verify-claude-install.mjs && node scripts/verify-codex-install.mjs"
   },
   "engines": {
     "node": ">=18"

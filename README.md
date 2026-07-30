@@ -44,12 +44,12 @@ npx --yes harvest-hosted@0.1.2 --runtime codex
 For Claude Code, replace `codex` with `claude-code`.
 
 The package installer copies `SKILL.md`, its fail-closed registration helpers,
-and a thin local MCP bridge. For Claude Code it registers that bridge at user
-scope. The bridge reads the privately saved credential at runtime, so it never
-appears in Claude's MCP configuration or CLI arguments; it forwards channel
+and a thin local MCP bridge. It registers that bridge automatically for both
+Codex and Claude Code. The bridge reads the privately saved credential at
+runtime, so it never appears in runtime configuration or CLI arguments; it forwards channel
 events and adds local-only participant-page tools while all meeting policy
-remains on the hosted MCP server. Restart Claude Code once after installation
-so the new tools load. The installer never prints API keys. If an installed
+remains on the hosted MCP server. Restart the selected runtime once after
+installation so the new tools load. The installer never prints API keys. If an installed
 file differs, installation stops; remove or back up an old installation
 yourself before replacing it.
 
@@ -63,12 +63,17 @@ Other MCP clients can run the installed `channel-bridge.mjs` as a normal stdio
 server. They keep `next_utterance` as a fallback when channel notifications do
 not wake model turns.
 
+Claude Code is currently the only supported runtime with a documented
+in-process Harvest push path. Codex receives the same MCP tools through the
+automatically registered bridge but uses bounded `next_utterance`, because its
+normal MCP client does not expose a server-originated model-turn wake-up.
+
 ## Requirements
 
 - Node.js 18 or newer
 - A Harvest API token intentionally supplied in `HARVEST_TOKEN`, or a
   previously saved credential
-- Claude Code on `PATH` when installing for `claude-code`; the installer
+- The selected runtime CLI (`codex` or `claude`) on `PATH`; the installer
   configures the Harvest MCP endpoint automatically
 
 ## Credential setup
