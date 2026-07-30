@@ -171,6 +171,15 @@ Use `send_chat_message` to put a link, a name, a number, or anything else that
 is easier read than heard into the meeting chat. Prefer it over spelling long
 strings out loud. It completes only once the Meet composer clears.
 
+When participants need to click, scroll, or submit a non-sensitive form in
+their own browsers, serve the page on a localhost HTTP port and call
+`open_participant_page`. Send only the returned URL through
+`send_chat_message`. This is not screen sharing: each participant opens the
+page independently. Never collect passwords, verification codes, payment data,
+API keys, or other sensitive input. Call `close_participant_page` immediately
+when the interaction ends and always before `leave_meeting`; the URL also
+expires automatically.
+
 ## Raise hand
 
 If `raise_hand` is in the tool list, call it to signal without speaking, and

@@ -44,24 +44,24 @@ try {
 
   const target = join(claudeConfig, 'skills', 'harvest');
   const helperPath = join(target, 'mcp-headers.mjs');
+  const bridgePath = join(target, 'channel-bridge.mjs');
   requireFile(join(target, 'SKILL.md'));
   requireFile(join(target, 'register.mjs'));
   requireFile(helperPath);
+  requireFile(bridgePath);
 
   const calls = readFileSync(capturePath, 'utf8').trim().split(/\r?\n/).map(JSON.parse);
   if (calls.length !== 2) throw new Error(`expected two idempotent MCP registrations, got ${calls.length}`);
   for (const args of calls) {
     if (JSON.stringify(args).includes(token)) throw new Error('token leaked into Claude CLI arguments');
     if (JSON.stringify(args.slice(0, 5)) !== JSON.stringify([
-      'mcp', 'add-json', '--scope', 'user', 'harvest',
+      'mcp', 'add-json', '--scope', 'user', 'harvest-hosted',
     ])) throw new Error(`unexpected Claude CLI arguments: ${JSON.stringify(args)}`);
     const config = JSON.parse(args[5]);
-    if (config.type !== 'http' || config.url !== 'https://tryharvest.ai/mcp') {
-      throw new Error('Harvest MCP transport mismatch');
-    }
-    if (typeof config.headersHelper !== 'string' || !config.headersHelper.includes('mcp-headers.mjs')) {
-      throw new Error('dynamic authorization helper missing');
-    }
+    if (config.command !== process.execPath) throw new Error('Harvest MCP bridge executable mismatch');
+    if (JSON.stringify(config.args) !== JSON.stringify([
+      bridgePath, '--url', 'https://tryharvest.ai/mcp',
+    ])) throw new Error('Harvest MCP bridge arguments mismatch');
   }
 
   const headers = JSON.parse(execFileSync(process.execPath, [helperPath], {

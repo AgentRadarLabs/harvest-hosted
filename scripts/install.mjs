@@ -10,6 +10,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sourcePath = resolve(repositoryRoot, 'SKILL.md');
 const registrationSourcePath = resolve(repositoryRoot, 'scripts', 'register.mjs');
 const mcpHeadersSourcePath = resolve(repositoryRoot, 'scripts', 'mcp-headers.mjs');
+const bridgeSourcePath = resolve(repositoryRoot, 'scripts', 'channel-bridge.bundle.mjs');
 const args = process.argv.slice(2);
 
 if (args.includes('--help') || args.includes('-h')) {
@@ -33,28 +34,31 @@ if (!targetDirectory) fail('runtime must be codex or claude-code');
 const source = readFileSync(sourcePath, 'utf8');
 const registrationSource = readFileSync(registrationSourcePath, 'utf8');
 const mcpHeadersSource = readFileSync(mcpHeadersSourcePath, 'utf8');
+const bridgeSource = readFileSync(bridgeSourcePath, 'utf8');
 const targetPath = resolve(targetDirectory, 'SKILL.md');
 const registrationTargetPath = resolve(targetDirectory, 'register.mjs');
 const mcpHeadersTargetPath = resolve(targetDirectory, 'mcp-headers.mjs');
+const bridgeTargetPath = resolve(targetDirectory, 'channel-bridge.mjs');
 assertCompatible(targetPath, source);
 assertCompatible(registrationTargetPath, registrationSource);
 assertCompatible(mcpHeadersTargetPath, mcpHeadersSource);
+assertCompatible(bridgeTargetPath, bridgeSource);
 
 mkdirSync(targetDirectory, { recursive: true, mode: 0o700 });
 writeIfMissing(targetPath, source);
 writeIfMissing(registrationTargetPath, registrationSource);
 writeIfMissing(mcpHeadersTargetPath, mcpHeadersSource);
-if (runtime === 'claude-code') configureClaudeMcp(mcpHeadersTargetPath);
+writeIfMissing(bridgeTargetPath, bridgeSource);
+if (runtime === 'claude-code') configureClaudeMcp(bridgeTargetPath);
 console.log(`Harvest skill installed for ${runtime}: ${targetPath}`);
 
-function configureClaudeMcp(headersHelperPath) {
+function configureClaudeMcp(bridgePath) {
   const server = JSON.stringify({
-    type: 'http',
-    url: 'https://tryharvest.ai/mcp',
-    headersHelper: `${shellQuote(process.execPath)} ${shellQuote(headersHelperPath)}`,
+    command: process.execPath,
+    args: [bridgePath, '--url', 'https://tryharvest.ai/mcp'],
   });
   const command = process.platform === 'win32' ? 'claude.cmd' : 'claude';
-  const commandArgs = ['mcp', 'add-json', '--scope', 'user', 'harvest', server];
+  const commandArgs = ['mcp', 'add-json', '--scope', 'user', 'harvest-hosted', server];
   try {
     const options = { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] };
     if (process.platform === 'win32') {
@@ -68,15 +72,6 @@ function configureClaudeMcp(headersHelperPath) {
       : String(error?.stderr || error?.message || 'unknown Claude CLI error').trim();
     fail(`could not configure Harvest MCP: ${detail}`);
   }
-}
-
-function shellQuote(value) {
-  if (/[\0\r\n]/.test(value)) fail('unsafe path while configuring Claude MCP');
-  if (process.platform === 'win32') {
-    if (value.includes('"')) fail('unsafe quote in path while configuring Claude MCP');
-    return `"${value}"`;
-  }
-  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function assertCompatible(path, expected) {

@@ -10,12 +10,13 @@ Give your coding agent this prompt:
 
 > Please install the pinned Harvest join-meeting package:
 >
-> `npx --yes harvest-hosted@0.1.1 --runtime claude-code`
+> `npx --yes harvest-hosted@0.1.2 --runtime claude-code`
 >
 > I created the Harvest agent credential in my authenticated Harvest account
 > and intentionally supplied it to this process as `HARVEST_TOKEN`. Do not
 > access my mailbox or attempt email verification. Treat the credential as a
-> secret and use only the first-party https://tryharvest.ai domain.
+> secret and use only the first-party tryharvest.ai domain and its service
+> subdomains.
 >
 > Complete setup:
 >
@@ -37,18 +38,30 @@ Give your coding agent this prompt:
 Or install it yourself:
 
 ```sh
-npx --yes harvest-hosted@0.1.1 --runtime codex
+npx --yes harvest-hosted@0.1.2 --runtime codex
 ```
 
 For Claude Code, replace `codex` with `claude-code`.
 
-The package installer copies `SKILL.md` and its fail-closed registration helpers.
-For Claude Code it also registers the hosted Harvest MCP server at user scope
-with dynamic authorization, so the credential is never stored in Claude's MCP
-configuration or CLI arguments. Restart Claude Code once after installation so
-the new tools load. The installer never prints API keys. If an installed file
-differs, installation stops; remove or back up an old installation yourself
-before replacing it.
+The package installer copies `SKILL.md`, its fail-closed registration helpers,
+and a thin local MCP bridge. For Claude Code it registers that bridge at user
+scope. The bridge reads the privately saved credential at runtime, so it never
+appears in Claude's MCP configuration or CLI arguments; it forwards channel
+events and adds local-only participant-page tools while all meeting policy
+remains on the hosted MCP server. Restart Claude Code once after installation
+so the new tools load. The installer never prints API keys. If an installed
+file differs, installation stops; remove or back up an old installation
+yourself before replacing it.
+
+To enable push wake-ups in Claude Code, launch it with:
+
+```sh
+claude --dangerously-load-development-channels server:harvest-hosted
+```
+
+Other MCP clients can run the installed `channel-bridge.mjs` as a normal stdio
+server. They keep `next_utterance` as a fallback when channel notifications do
+not wake model turns.
 
 ## Requirements
 
