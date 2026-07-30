@@ -84,6 +84,10 @@ On `state=degraded`, do not call meeting tools or leave; Harvest is reconnecting
 automatically. On `state=recovered`, resume the meeting loop. If recovery fails, a terminal
 `meeting_lifecycle` event follows; tell the user immediately and stop waiting for meeting input.
 
+A channel event with `type=meeting_duration_warning` reports the enforced remaining call time.
+Tell the user once, keep the response brief, and finish or hand off important work before the
+deadline. Do not leave or start a replacement body unless the user asks.
+
 If the agent process or channel reconnects while the meeting body remains
 active, call `replay_meeting_events` once. Process its durable events in
 ascending `event_id` order, deduplicate using `event_id`, and save
