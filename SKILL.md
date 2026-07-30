@@ -73,6 +73,12 @@ arriving, do not run a continuous `next_utterance` polling loop. Stay idle
 between events; the single blocking call after a partial is part of that pushed
 turn and prevents a final that lands during reasoning from being lost.
 
+The same channel also carries participant and chat events. On the first
+`participant_joined` event only, `meta.greeting_prompt` is `"true"`: greet once
+in at most 12 words unless the user requested silence. A `chat_received` event
+contains the new message in `content`; handle it as a new meeting turn without
+polling `read_chat_messages`.
+
 Push only works when the client was started with channels loaded:
 
 ```
@@ -176,7 +182,9 @@ only when the agent's own queued answer has become wrong and should be dropped.
 
 Use `send_chat_message` to put a link, a name, a number, or anything else that
 is easier read than heard into the meeting chat. Prefer it over spelling long
-strings out loud. It completes only once the Meet composer clears.
+strings out loud. It completes only after the message is visible in Meet's chat
+feed. When push is available, incoming messages arrive as `chat_received`
+channel events; do not poll the chat reader.
 
 When participants need to click, scroll, or submit a non-sensitive form in
 their own browsers, serve the page on a localhost HTTP port and call
