@@ -79,6 +79,11 @@ in at most 12 words unless the user requested silence. A `chat_received` event
 contains the new message in `content`; handle it as a new meeting turn without
 polling `read_chat_messages`.
 
+A channel event with `type=meeting_health` reports a recoverable body transport interruption.
+On `state=degraded`, do not call meeting tools or leave; Harvest is reconnecting the same body
+automatically. On `state=recovered`, resume the meeting loop. If recovery fails, a terminal
+`meeting_lifecycle` event follows; tell the user immediately and stop waiting for meeting input.
+
 If the agent process or channel reconnects while the meeting body remains
 active, call `replay_meeting_events` once. Process its durable events in
 ascending `event_id` order, deduplicate using `event_id`, and save
