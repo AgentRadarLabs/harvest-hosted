@@ -1,6 +1,6 @@
 {
   "name": "harvest-hosted",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Install the proprietary Harvest meeting skill for supported agent runtimes",
   "license": "UNLICENSED",
   "type": "module",
@@ -12,15 +12,24 @@
     "README.md",
     "SECURITY.md",
     "SKILL.md",
+    "scripts/channel-bridge.bundle.mjs",
     "scripts/install.mjs",
     "scripts/mcp-headers.mjs",
     "scripts/register.mjs"
   ],
   "scripts": {
-    "test": "node scripts/verify-public-tree.mjs && node scripts/verify-registration.mjs && node scripts/verify-claude-install.mjs"
+    "build:bridge": "node scripts/build-channel-bridge.mjs",
+    "prepack": "npm run build:bridge",
+    "test": "npm run build:bridge && node scripts/verify-public-tree.mjs && node scripts/verify-registration.mjs && node scripts/verify-claude-install.mjs && node scripts/verify-codex-install.mjs"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "esbuild": "0.25.12",
+    "ws": "8.18.3",
+    "zod": "4.4.3"
   },
   "repository": {
     "type": "git",

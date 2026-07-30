@@ -1,15 +1,23 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, relative, resolve } from 'node:path';
+import { basename, delimiter, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const allowedTopLevel = new Set([
   '.git', '.gitignore', 'CLAUDE.md', 'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'scripts',
-  'package.json',
+  'node_modules', 'package-lock.json', 'package.json',
 ]);
 const secretPatterns = [
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
@@ -86,7 +94,8 @@ const packResult = JSON.parse(execFileSync(npmCommand, npmArgs, {
 const packedFiles = packResult[0]?.files?.map((file) => file.path).sort() || [];
 const expectedPackedFiles = [
   'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'package.json', 'scripts/install.mjs',
-  'scripts/mcp-headers.mjs', 'scripts/register.mjs',
+  'scripts/channel-bridge.bundle.mjs', 'scripts/mcp-headers.mjs',
+  'scripts/register.mjs',
 ].sort();
 if (JSON.stringify(packedFiles) !== JSON.stringify(expectedPackedFiles)) {
   failures.push(`npm package allowlist mismatch: ${packedFiles.join(',')}`);
@@ -94,7 +103,16 @@ if (JSON.stringify(packedFiles) !== JSON.stringify(expectedPackedFiles)) {
 
 const tempHome = mkdtempSync(resolve(tmpdir(), 'harvest-skill-verify-'));
 try {
-  const env = { ...process.env, HOME: tempHome, USERPROFILE: tempHome, CODEX_HOME: resolve(tempHome, '.codex') };
+  const fakeBin = resolve(tempHome, 'bin');
+  mkdirSync(fakeBin, { recursive: true });
+  installPassiveFakeCodex(fakeBin);
+  const env = {
+    ...process.env,
+    HOME: tempHome,
+    USERPROFILE: tempHome,
+    CODEX_HOME: resolve(tempHome, '.codex'),
+    PATH: `${fakeBin}${delimiter}${process.env.PATH || ''}`,
+  };
   execFileSync(process.execPath, [resolve(root, 'scripts', 'install.mjs'), '--runtime', 'codex'], {
     env,
     stdio: 'pipe',
@@ -115,6 +133,13 @@ try {
   if (installedHeaders !== mcpHeadersHelper) {
     failures.push('isolated Codex MCP headers helper differs from source');
   }
+  const installedBridge = readFileSync(
+    resolve(tempHome, '.codex', 'skills', 'harvest', 'channel-bridge.mjs'),
+    'utf8',
+  );
+  if (installedBridge !== readFileSync(resolve(root, 'scripts', 'channel-bridge.bundle.mjs'), 'utf8')) {
+    failures.push('isolated Codex channel bridge differs from source');
+  }
 } finally {
   rmSync(tempHome, { recursive: true, force: true });
 }
@@ -128,11 +153,31 @@ console.log(`PASS public-tree files=${files.length} npm_files=${packedFiles.leng
 function walk(path) {
   const output = [];
   for (const entry of readdirSync(path, { withFileTypes: true })) {
-    if (entry.name === '.git') continue;
+    if (entry.name === '.git' || entry.name === 'node_modules') continue;
     const absolute = resolve(path, entry.name);
     if (entry.isDirectory()) output.push(...walk(absolute));
     else if (entry.isFile()) output.push(absolute);
     else failures.push(`unsupported filesystem entry: ${basename(absolute)}`);
   }
   return output;
+}
+
+function installPassiveFakeCodex(directory) {
+  const script = resolve(directory, 'fake-codex.cjs');
+  writeFileSync(script, [
+    'const args = process.argv.slice(2);',
+    "if (args[0] === 'mcp' && args[1] === 'get') {",
+    "  console.error(\"Error: No MCP server named 'harvest-hosted' found.\");",
+    '  process.exit(1);',
+    '}',
+    "if (args[0] === 'mcp' && args[1] === 'add') process.exit(0);",
+    'process.exit(2);',
+  ].join('\n'));
+  if (process.platform === 'win32') {
+    writeFileSync(resolve(directory, 'codex.cmd'), `@"${process.execPath}" "%~dp0fake-codex.cjs" %*\r\n`);
+    return;
+  }
+  const executable = resolve(directory, 'codex');
+  writeFileSync(executable, `#!${process.execPath}\nrequire('./fake-codex.cjs');\n`);
+  chmodSync(executable, 0o755);
 }
