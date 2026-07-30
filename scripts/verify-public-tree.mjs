@@ -47,10 +47,13 @@ const license = readFileSync(resolve(root, 'LICENSE'), 'utf8');
 const registrationHelper = readFileSync(resolve(root, 'scripts', 'register.mjs'), 'utf8');
 const mcpHeadersHelper = readFileSync(resolve(root, 'scripts', 'mcp-headers.mjs'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
-const pinnedInstall = `npx --yes harvest-hosted@${packageJson.version} --runtime`;
-if (!readme.includes(pinnedInstall)) failures.push('README pinned npm install does not match package version');
-if (/git clone\s+https:\/\/github\.com\/f1scord\/harvest-hosted(?:\.git)?/i.test(readme)) {
-  failures.push('README still promotes clone-based onboarding');
+const cloneInstall = 'git clone --depth 1 https://github.com/AgentRadarLabs/harvest-hosted.git';
+if (!readme.includes(cloneInstall)) failures.push('README canonical clone install missing');
+if (/npx\s+--yes\s+harvest-hosted@/i.test(readme)) {
+  failures.push('README promotes an unpublished npm package');
+}
+if (/github\.com\/f1scord\/harvest-hosted/i.test(`${readme}\n${packageJson.repository?.url || ''}`)) {
+  failures.push('repository metadata still points at the pre-transfer owner');
 }
 if (!/^---\r?\nname: harvest\r?\n/.test(skill)) failures.push('SKILL.md frontmatter invalid');
 for (const [name, source] of [['README.md', readme], ['SKILL.md', skill], ['scripts/register.mjs', registrationHelper]]) {
