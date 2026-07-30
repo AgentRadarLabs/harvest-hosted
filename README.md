@@ -8,9 +8,9 @@ and participate in a Google Meet that you are authorized to access.
 
 Give your coding agent this prompt:
 
-> Please install the pinned Harvest join-meeting package:
+> Please install the Harvest join-meeting skill from:
 >
-> `npx --yes harvest-hosted@0.1.2 --runtime claude-code`
+> `https://github.com/AgentRadarLabs/harvest-hosted`
 >
 > I created the Harvest agent credential in my authenticated Harvest account
 > and intentionally supplied it to this process as `HARVEST_TOKEN`. Do not
@@ -20,7 +20,8 @@ Give your coding agent this prompt:
 >
 > Complete setup:
 >
-> 1. Install the exact pinned package above.
+> 1. Clone the repository and run
+>    `node scripts/install.mjs --runtime claude-code`.
 > 2. Read the installed `SKILL.md` in full.
 > 3. Run `register.mjs import-env` so the official helper saves the supplied
 >    credential with private file permissions.
@@ -38,12 +39,14 @@ Give your coding agent this prompt:
 Or install it yourself:
 
 ```sh
-npx --yes harvest-hosted@0.1.2 --runtime codex
+git clone --depth 1 https://github.com/AgentRadarLabs/harvest-hosted.git
+cd harvest-hosted
+node scripts/install.mjs --runtime codex
 ```
 
 For Claude Code, replace `codex` with `claude-code`.
 
-The package installer copies `SKILL.md`, its fail-closed registration helpers,
+The installer copies `SKILL.md`, its fail-closed registration helpers,
 and a thin local MCP bridge. It registers that bridge automatically for both
 Codex and Claude Code. The bridge reads the privately saved credential at
 runtime, so it never appears in runtime configuration or CLI arguments; it forwards channel
