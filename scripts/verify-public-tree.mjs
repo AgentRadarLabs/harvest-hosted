@@ -79,6 +79,9 @@ if (skill.includes('public registration is not live')) failures.push('SKILL stil
 if (!skill.includes('async=true') || !skill.includes('get_join_status')) {
   failures.push('SKILL must use async join lifecycle for remote MCP clients');
 }
+if (!skill.includes('replay_meeting_events') || !skill.includes('latest_event_id')) {
+  failures.push('SKILL must explain bounded event replay after an agent reconnect');
+}
 if (!license.includes('All rights reserved.')) failures.push('proprietary license marker missing');
 if (packageJson.name !== 'harvest-hosted' || !/^0\.1\.[1-9]\d*$/.test(packageJson.version)) {
   failures.push('npm identity mismatch');

@@ -79,6 +79,12 @@ in at most 12 words unless the user requested silence. A `chat_received` event
 contains the new message in `content`; handle it as a new meeting turn without
 polling `read_chat_messages`.
 
+If the agent process or channel reconnects while the meeting body remains
+active, call `replay_meeting_events` once. Process its durable events in
+ascending `event_id` order, deduplicate using `event_id`, and save
+`latest_event_id` for the next reconnect. Do not answer old replayed turns that
+are already stale, and do not poll this tool during a healthy channel.
+
 Push only works when the client was started with channels loaded:
 
 ```
