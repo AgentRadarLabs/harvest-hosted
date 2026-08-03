@@ -169,7 +169,10 @@ function fail(message) {
 
 /** The user-scope Claude config entry for harvest-hosted, or null when there is none. */
 function readClaudeMcpEntry() {
-  const configPath = resolve(homedir(), '.claude.json');
+  // CLAUDE_CONFIG_DIR relocates .claude.json, exactly as it relocates the skills directory
+  // above. Reading only ~/.claude.json would see no entry there and hand the user back the
+  // "already exists" failure this check exists to remove.
+  const configPath = resolve(process.env.CLAUDE_CONFIG_DIR || homedir(), '.claude.json');
   try {
     const parsed = JSON.parse(readFileSync(configPath, 'utf8'));
     return parsed?.mcpServers?.['harvest-hosted'] ?? null;
