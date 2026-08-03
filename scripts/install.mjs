@@ -54,11 +54,31 @@ if (runtime === 'codex') configureCodexMcp(bridgeTargetPath);
 console.log(`Harvest skill installed for ${runtime}: ${targetPath}`);
 
 function configureClaudeMcp(bridgePath) {
-  const server = JSON.stringify({
+  const expected = {
     command: process.execPath,
     args: [bridgePath, '--url', 'https://tryharvest.ai/mcp'],
-  });
+  };
+  const server = JSON.stringify(expected);
   const command = process.platform === 'win32' ? 'claude.cmd' : 'claude';
+
+  // Running the installer twice is a normal thing for a person to do — re-reading the setup
+  // instructions, re-pasting the prompt, or just being unsure the first run worked. Before
+  // this check the second run died with "MCP server harvest-hosted already exists" and a
+  // non-zero exit, which reads as a broken product rather than "nothing to do".
+  const existing = readClaudeMcpEntry();
+  if (existing) {
+    if (mcpEntryMatches(existing, expected)) {
+      console.log('Harvest MCP already configured for Claude Code; nothing to change.');
+      return;
+    }
+    // Someone else's entry, or ours pointing somewhere stale. Overwriting silently would be
+    // worse than saying so: the recovery is one command and it is theirs to run.
+    fail(
+      'a different MCP server named harvest-hosted is already configured. '
+      + 'Remove it with `claude mcp remove --scope user harvest-hosted`, then run this installer again',
+    );
+  }
+
   const commandArgs = ['mcp', 'add-json', '--scope', 'user', 'harvest-hosted', server];
   try {
     const options = { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] };
@@ -144,4 +164,28 @@ function writeIfMissing(path, content) {
 function fail(message) {
   console.error(`harvest-install: ${message}`);
   process.exit(1);
+}
+
+
+/** The user-scope Claude config entry for harvest-hosted, or null when there is none. */
+function readClaudeMcpEntry() {
+  // CLAUDE_CONFIG_DIR relocates .claude.json, exactly as it relocates the skills directory
+  // above. Reading only ~/.claude.json would see no entry there and hand the user back the
+  // "already exists" failure this check exists to remove.
+  const configPath = resolve(process.env.CLAUDE_CONFIG_DIR || homedir(), '.claude.json');
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, 'utf8'));
+    return parsed?.mcpServers?.['harvest-hosted'] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Same command and same arguments means the existing entry is already what we would write. */
+function mcpEntryMatches(existing, expected) {
+  if (!existing || typeof existing !== 'object') return false;
+  if (existing.command !== expected.command) return false;
+  const args = Array.isArray(existing.args) ? existing.args : [];
+  return args.length === expected.args.length
+    && args.every((value, index) => value === expected.args[index]);
 }
