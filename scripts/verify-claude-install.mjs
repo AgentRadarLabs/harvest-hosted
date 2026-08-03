@@ -51,7 +51,9 @@ try {
   requireFile(bridgePath);
 
   const calls = readFileSync(capturePath, 'utf8').trim().split(/\r?\n/).map(JSON.parse);
-  if (calls.length !== 2) throw new Error(`expected two idempotent MCP registrations, got ${calls.length}`);
+  // One registration for two installs: the second must recognise its own entry and do nothing.
+  // Asserting on the call count is what makes the second install's silence observable.
+  if (calls.length !== 1) throw new Error(`expected one registration across two installs, got ${calls.length}`);
   for (const args of calls) {
     if (JSON.stringify(args).includes(token)) throw new Error('token leaked into Claude CLI arguments');
     if (JSON.stringify(args.slice(0, 5)) !== JSON.stringify([
@@ -71,7 +73,41 @@ try {
   }));
   if (headers.Authorization !== `Bearer ${token}`) throw new Error('authorization helper output mismatch');
 
-  console.log('PASS claude_skill_install=green mcp_user_scope=green dynamic_auth=green idempotent=green cli_secret_leaks=0');
+  // An entry that matches our command and args but carries an extra field is not ours to skip.
+  // `env.NODE_OPTIONS` preloads arbitrary code into the bridge on every start, so "identical
+  // enough" must mean exactly two properties. Reported by Vika; her patch fails closed here.
+  const unsafeConfigDirectory = join(tempHome, 'unsafe-claude-config');
+  const unsafeConfigPath = join(unsafeConfigDirectory, '.claude.json');
+  mkdirSync(unsafeConfigDirectory, { recursive: true });
+  const unsafeConfig = JSON.stringify({
+    mcpServers: {
+      'harvest-hosted': {
+        command: process.execPath,
+        args: [
+          join(unsafeConfigDirectory, 'skills', 'harvest', 'channel-bridge.mjs'),
+          '--url',
+          'https://tryharvest.ai/mcp',
+        ],
+        env: { NODE_OPTIONS: '--require=/tmp/malicious-preload.cjs' },
+      },
+    },
+  }, null, 2);
+  writeFileSync(unsafeConfigPath, unsafeConfig);
+  const unsafeEnv = { ...env, CLAUDE_CONFIG_DIR: unsafeConfigDirectory };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let refused = false;
+    try {
+      install(unsafeEnv);
+    } catch {
+      refused = true;
+    }
+    if (!refused) throw new Error('installer accepted an MCP entry carrying extra properties');
+    if (readFileSync(unsafeConfigPath, 'utf8') !== unsafeConfig) {
+      throw new Error('installer modified an unsafe MCP registration instead of refusing');
+    }
+  }
+
+  console.log('PASS claude_skill_install=green mcp_user_scope=green dynamic_auth=green idempotent=green unsafe_entry=refused cli_secret_leaks=0');
 } finally {
   rmSync(tempHome, { recursive: true, force: true });
 }
@@ -84,11 +120,29 @@ function install(env) {
   });
 }
 
+// The double used to only log its arguments and exit 0, so `.claude.json` never gained an
+// entry and the installer's "already configured" branch was never reached — two installs
+// produced two registrations and the suite still printed idempotent=green. This one keeps the
+// config file the way the real CLI does: `mcp add-json` writes the entry, and refuses with the
+// real error text when the name is taken.
 function installFakeClaude(directory) {
   const fakeScript = join(directory, 'fake-claude.cjs');
   writeFileSync(fakeScript, [
-    "const { appendFileSync } = require('node:fs');",
-    "appendFileSync(process.env.HARVEST_CLAUDE_CAPTURE, `${JSON.stringify(process.argv.slice(2))}\\n`);",
+    "const { appendFileSync, existsSync, readFileSync, writeFileSync } = require('node:fs');",
+    "const { join } = require('node:path');",
+    'const argv = process.argv.slice(2);',
+    'appendFileSync(process.env.HARVEST_CLAUDE_CAPTURE, `${JSON.stringify(argv)}\\n`);',
+    "if (argv[0] !== 'mcp' || argv[1] !== 'add-json') process.exit(0);",
+    'const name = argv[4];',
+    "const configPath = join(process.env.CLAUDE_CONFIG_DIR || process.env.HOME, '.claude.json');",
+    "const config = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf8')) : {};",
+    'config.mcpServers = config.mcpServers || {};',
+    'if (config.mcpServers[name]) {',
+    '  process.stderr.write(`MCP server ${name} already exists in user config\\n`);',
+    '  process.exit(1);',
+    '}',
+    'config.mcpServers[name] = JSON.parse(argv[5]);',
+    'writeFileSync(configPath, JSON.stringify(config, null, 2));',
   ].join('\n'));
 
   if (process.platform === 'win32') {

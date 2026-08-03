@@ -183,9 +183,16 @@ function readClaudeMcpEntry() {
 
 /** Same command and same arguments means the existing entry is already what we would write. */
 function mcpEntryMatches(existing, expected) {
-  if (!existing || typeof existing !== 'object') return false;
+  if (existing === null || typeof existing !== 'object') return false;
+  if (Object.getPrototypeOf(existing) !== Object.prototype) return false;
+  // Exactly `command` and `args`, nothing else. An entry that matches ours but carries an
+  // extra field is not ours to wave through: `env.NODE_OPTIONS` on this entry preloads
+  // arbitrary code into the bridge every time Claude Code starts it. Comparing only command
+  // and args would call that "already configured; nothing to change" and leave it in place.
+  const keys = Object.keys(existing);
+  if (keys.length !== 2 || !keys.includes('command') || !keys.includes('args')) return false;
   if (existing.command !== expected.command) return false;
-  const args = Array.isArray(existing.args) ? existing.args : [];
-  return args.length === expected.args.length
-    && args.every((value, index) => value === expected.args[index]);
+  return Array.isArray(existing.args)
+    && existing.args.length === expected.args.length
+    && existing.args.every((value, index) => value === expected.args[index]);
 }
