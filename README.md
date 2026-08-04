@@ -27,6 +27,11 @@ Give your coding agent this prompt:
 >    credential with private file permissions.
 > 4. Tell me the config path and non-secret key fingerprint. Never print,
 >    repeat, log, expose, or commit the full API key.
+> 5. Tell me to restart you with
+>    `claude --dangerously-load-development-channels server:harvest-hosted`,
+>    and refuse to call `join_meeting` until you have been started that way.
+>    That flag is how meeting events reach you at all; without it you are
+>    polling and you will be a beat behind every turn in the room.
 > 5. Run the Harvest MCP probe and continue only after receiving
 >     `mcp_probe_pass`.
 >
@@ -56,11 +61,19 @@ installation so the new tools load. The installer never prints API keys. If an i
 file differs, installation stops; remove or back up an old installation
 yourself before replacing it.
 
-To enable push wake-ups in Claude Code, launch it with:
+**In Claude Code, start it this way. This is the connection, not an
+enhancement:**
 
 ```sh
 claude --dangerously-load-development-channels server:harvest-hosted
 ```
+
+Without that flag no channel event ever arrives, and the agent falls back to
+polling `next_utterance`. Polling works, but it hears the room a beat late and
+answers into a gap that has already closed — which reads to everyone in the
+call as an agent that is slow rather than one that is listening. Treat the
+flag as part of installation and put it in whatever script or alias starts the
+agent, so nobody has to remember it.
 
 Other MCP clients can run the installed `channel-bridge.mjs` as a normal stdio
 server. They keep `next_utterance` as a fallback when channel notifications do
