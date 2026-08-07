@@ -1,0 +1,27 @@
+
+> harvest-hosted@0.1.2 test
+> npm run build:bridge && node scripts/verify-public-tree.mjs && node scripts/verify-registration.mjs && node scripts/verify-claude-install.mjs && node scripts/verify-codex-install.mjs && node scripts/verify-claude-launcher.mjs
+
+
+> harvest-hosted@0.1.2 build:bridge
+> node scripts/build-channel-bridge.mjs
+
+PASS public-tree files=23 npm_files=10 possible_secrets=0 isolated_install=green
+PASS clone_skill_register_key_mcp=green output_secrets=0 config_mode=private
+PASS claude_skill_install=green mcp_user_scope=green dynamic_auth=green idempotent=green unsafe_entry=refused cli_secret_leaks=0
+PASS codex_skill_install=green mcp_auto_config=green idempotent=green cli_secret_leaks=0
+ok   launcher exits with Claude's own status
+ok   channels scope is passed, once, ahead of user arguments
+ok   user arguments survive in order and are not swallowed
+ok   Claude runs in the directory the user was in
+ok   no credential is placed on the command line
+ok   no Harvest environment is injected behind the user's back
+ok   an explicitly passed scope is not duplicated
+ok   installer still fails closed: []
+ok   installer still fails closed: ["--runtime"]
+ok   installer still fails closed: ["--runtime","bogus"]
+ok   installer still fails closed: ["--runtime","codex","--extra"]
+ok   a missing Claude CLI is reported, not swallowed
+ok   launcher is included in the published files list
+
+launcher verified
