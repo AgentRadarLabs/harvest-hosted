@@ -6,7 +6,7 @@
 > harvest-hosted@0.1.2 build:bridge
 > node scripts/build-channel-bridge.mjs
 
-PASS public-tree files=23 npm_files=10 possible_secrets=0 isolated_install=green
+PASS public-tree files=25 npm_files=10 possible_secrets=0 isolated_install=green
 PASS clone_skill_register_key_mcp=green output_secrets=0 config_mode=private
 PASS claude_skill_install=green mcp_user_scope=green dynamic_auth=green idempotent=green unsafe_entry=refused cli_secret_leaks=0
 PASS codex_skill_install=green mcp_auto_config=green idempotent=green cli_secret_leaks=0

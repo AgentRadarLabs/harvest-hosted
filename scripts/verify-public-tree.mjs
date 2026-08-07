@@ -17,6 +17,10 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const allowedTopLevel = new Set([
   '.git', '.gitignore', 'CLAUDE.md', 'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'scripts',
+  // Transcripts a reviewer reads instead of rerunning. Repository-only: the published tarball is
+  // an explicit file list, and the packed-contents assertion below fails if anything from here
+  // ever reaches npm.
+  'evidence',
   'node_modules', 'package-lock.json', 'package.json',
 ]);
 const secretPatterns = [
@@ -103,6 +107,9 @@ const expectedPackedFiles = [
   'scripts/channel-bridge.bundle.mjs', 'scripts/mcp-headers.mjs',
   'scripts/register.mjs',
 ].sort();
+if (packedFiles.some((file) => file === 'evidence' || file.startsWith('evidence/'))) {
+  failures.push('evidence must never be published to npm');
+}
 if (JSON.stringify(packedFiles) !== JSON.stringify(expectedPackedFiles)) {
   failures.push(`npm package allowlist mismatch: ${packedFiles.join(',')}`);
 }
