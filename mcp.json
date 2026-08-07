@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "harvest-hosted": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/scripts/channel-bridge.bundle.mjs",
+        "--url",
+        "https://tryharvest.ai/mcp"
+      ]
+    }
+  }
+}

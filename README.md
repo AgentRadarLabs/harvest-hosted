@@ -51,6 +51,14 @@ node scripts/install.mjs --runtime codex
 
 For Claude Code, replace `codex` with `claude-code`.
 
+## As an agent plugin
+
+This repository is also a plugin in the [Agent Plugins](https://agent-plugins.org)
+1.0.0 layout: `plugin.json`, `mcp.json`, and the skill under `skills/harvest/`. A
+client that supports the standard can load the clone as-is instead of running the
+installer. It starts the same local bridge and reads the same privately saved
+credential, so no token is ever written into plugin configuration.
+
 The installer copies `SKILL.md`, its fail-closed registration helpers,
 and a thin local MCP bridge. It registers that bridge automatically for both
 Codex and Claude Code. The bridge reads the privately saved credential at

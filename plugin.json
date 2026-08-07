@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "harvest",
+  "version": "0.1.2",
+  "description": "Join a Google Meet you are authorized to attend: hear the room, speak, use meeting chat, and see participants and the shared screen.",
+  "author": {
+    "name": "Harvest AI",
+    "url": "https://tryharvest.ai"
+  },
+  "homepage": "https://tryharvest.ai/docs",
+  "repository": "https://github.com/AgentRadarLabs/harvest-hosted",
+  "license": "UNLICENSED",
+  "keywords": ["meeting", "google-meet", "voice", "realtime"]
+}

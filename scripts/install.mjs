@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const sourcePath = resolve(repositoryRoot, 'SKILL.md');
+const sourcePath = resolve(repositoryRoot, 'skills', 'harvest', 'SKILL.md');
 const registrationSourcePath = resolve(repositoryRoot, 'scripts', 'register.mjs');
 const mcpHeadersSourcePath = resolve(repositoryRoot, 'scripts', 'mcp-headers.mjs');
 const bridgeSourcePath = resolve(repositoryRoot, 'scripts', 'channel-bridge.bundle.mjs');

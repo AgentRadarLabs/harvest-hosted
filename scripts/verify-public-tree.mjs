@@ -16,7 +16,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const allowedTopLevel = new Set([
-  '.git', '.gitignore', 'CLAUDE.md', 'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'scripts',
+  '.git', '.gitignore', 'CLAUDE.md', 'LICENSE', 'README.md', 'SECURITY.md', 'scripts',
+  // Agent Plugins 1.0.0 layout: the manifest, the MCP servers, and the skill in its own directory.
+  'plugin.json', 'mcp.json', 'skills',
   // Transcripts a reviewer reads instead of rerunning. Repository-only: the published tarball is
   // an explicit file list, and the packed-contents assertion below fails if anything from here
   // ever reaches npm.
@@ -46,7 +48,7 @@ for (const path of files) {
 }
 
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
-const skill = readFileSync(resolve(root, 'SKILL.md'), 'utf8');
+const skill = readFileSync(resolve(root, 'skills', 'harvest', 'SKILL.md'), 'utf8');
 const license = readFileSync(resolve(root, 'LICENSE'), 'utf8');
 const registrationHelper = readFileSync(resolve(root, 'scripts', 'register.mjs'), 'utf8');
 const mcpHeadersHelper = readFileSync(resolve(root, 'scripts', 'mcp-headers.mjs'), 'utf8');
@@ -92,6 +94,43 @@ if (packageJson.name !== 'harvest-hosted' || !/^0\.1\.[1-9]\d*$/.test(packageJso
 }
 if (packageJson.license !== 'UNLICENSED') failures.push('npm package must remain proprietary');
 
+// Agent Plugins 1.0.0. A schema violation makes a conformant client reject the whole plugin, and
+// the two manifests are small enough to check by hand here rather than fetching a validator.
+const pluginManifest = JSON.parse(readFileSync(resolve(root, 'plugin.json'), 'utf8'));
+const mcpManifest = JSON.parse(readFileSync(resolve(root, 'mcp.json'), 'utf8'));
+const allowedManifestKeys = new Set([
+  '$schema', 'name', 'version', 'description', 'author', 'homepage', 'repository', 'license',
+  'keywords', 'extensions',
+]);
+if (pluginManifest.$schema !== 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json') {
+  failures.push('plugin.json declares a different Agent Plugins version');
+}
+if (mcpManifest.$schema !== 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json') {
+  failures.push('mcp.json declares a different Agent Plugins version');
+}
+if (!/^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(pluginManifest.name || '')) {
+  failures.push('plugin name breaks the Agent Plugins naming rule');
+}
+for (const key of Object.keys(pluginManifest)) {
+  if (!allowedManifestKeys.has(key)) failures.push(`plugin.json has an unspecified field: ${key}`);
+}
+// One version, two files: a plugin published as 0.1.2 must be the tarball called 0.1.2.
+if (pluginManifest.version !== packageJson.version) {
+  failures.push(`plugin.json version ${pluginManifest.version} != package ${packageJson.version}`);
+}
+const bridgeArgument = '${PLUGIN_ROOT}/scripts/channel-bridge.bundle.mjs';
+const pluginServer = mcpManifest.mcpServers?.['harvest-hosted'];
+if (pluginServer?.type !== 'stdio' || !pluginServer.args?.includes(bridgeArgument)) {
+  failures.push('mcp.json must start the packaged bridge from ${PLUGIN_ROOT}');
+}
+if (!pluginServer?.args?.includes('https://tryharvest.ai/mcp')) {
+  failures.push('mcp.json must point at the first-party production endpoint');
+}
+// Placeholders are not expanded in headers, so a header here could only be a literal credential.
+for (const [name, server] of Object.entries(mcpManifest.mcpServers || {})) {
+  if (server?.headers) failures.push(`mcp.json server ${name} carries literal headers`);
+}
+
 const npmCommand = process.platform === 'win32' ? (process.env.ComSpec || 'cmd.exe') : 'npm';
 const npmArgs = process.platform === 'win32'
   ? ['/d', '/s', '/c', 'npm pack --dry-run --json']
@@ -103,7 +142,8 @@ const packResult = JSON.parse(execFileSync(npmCommand, npmArgs, {
 }));
 const packedFiles = packResult[0]?.files?.map((file) => file.path).sort() || [];
 const expectedPackedFiles = [
-  'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'package.json', 'scripts/install.mjs', 'scripts/launch-claude.mjs',
+  'LICENSE', 'README.md', 'SECURITY.md', 'package.json', 'scripts/install.mjs', 'scripts/launch-claude.mjs',
+  'plugin.json', 'mcp.json', 'skills/harvest/SKILL.md',
   'scripts/channel-bridge.bundle.mjs', 'scripts/mcp-headers.mjs',
   'scripts/register.mjs',
 ].sort();
@@ -131,7 +171,7 @@ try {
     stdio: 'pipe',
   });
   const installed = readFileSync(resolve(tempHome, '.codex', 'skills', 'harvest', 'SKILL.md'), 'utf8');
-  if (installed !== skill) failures.push('isolated Codex install differs from root SKILL.md');
+  if (installed !== skill) failures.push('isolated Codex install differs from the packaged SKILL.md');
   const installedRegistration = readFileSync(
     resolve(tempHome, '.codex', 'skills', 'harvest', 'register.mjs'),
     'utf8',
