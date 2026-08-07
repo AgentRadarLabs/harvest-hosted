@@ -65,8 +65,30 @@ yourself before replacing it.
 enhancement:**
 
 ```sh
+harvest-hosted claude
+```
+
+That is the same thing as starting Claude yourself with the scope:
+
+```sh
 claude --dangerously-load-development-channels server:harvest-hosted
 ```
+
+The launcher forwards everything after `claude` untouched, runs in the
+directory you are already in, and exits with Claude's own exit code:
+
+```sh
+harvest-hosted claude --model opus -p "join the meeting and take notes"
+```
+
+Pinned, without installing anything:
+
+```sh
+npx -y harvest-hosted@0.1.2 claude
+```
+
+It puts no credential on the command line — authorization stays in the MCP
+headers helper — and it changes no global configuration.
 
 Without that flag no channel event ever arrives, and the agent falls back to
 polling `next_utterance`. Polling works, but it hears the room a beat late and

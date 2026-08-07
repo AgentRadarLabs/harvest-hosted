@@ -99,7 +99,7 @@ const packResult = JSON.parse(execFileSync(npmCommand, npmArgs, {
 }));
 const packedFiles = packResult[0]?.files?.map((file) => file.path).sort() || [];
 const expectedPackedFiles = [
-  'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'package.json', 'scripts/install.mjs',
+  'LICENSE', 'README.md', 'SECURITY.md', 'SKILL.md', 'package.json', 'scripts/install.mjs', 'scripts/launch-claude.mjs',
   'scripts/channel-bridge.bundle.mjs', 'scripts/mcp-headers.mjs',
   'scripts/register.mjs',
 ].sort();

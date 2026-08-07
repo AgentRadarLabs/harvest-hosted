@@ -13,8 +13,18 @@ const mcpHeadersSourcePath = resolve(repositoryRoot, 'scripts', 'mcp-headers.mjs
 const bridgeSourcePath = resolve(repositoryRoot, 'scripts', 'channel-bridge.bundle.mjs');
 const args = process.argv.slice(2);
 
+// `harvest-hosted claude ...` is a launcher, not an install: it starts Claude Code in this
+// directory with the Harvest Channels scope already on, which the README calls the connection
+// rather than an optional extra. It is dispatched before any installer argument checking so a user
+// argument can never be read as an installer flag, and the installer stays exactly as strict.
+if (args[0] === 'claude') {
+  const { runClaude } = await import('./launch-claude.mjs');
+  runClaude(args.slice(1));
+} else {
+
 if (args.includes('--help') || args.includes('-h')) {
   console.log('Usage: node scripts/install.mjs --runtime <codex|claude-code>');
+  console.log('       harvest-hosted claude [claude arguments]');
   process.exit(0);
 }
 
@@ -52,6 +62,8 @@ writeIfMissing(bridgeTargetPath, bridgeSource);
 if (runtime === 'claude-code') configureClaudeMcp(bridgeTargetPath);
 if (runtime === 'codex') configureCodexMcp(bridgeTargetPath);
 console.log(`Harvest skill installed for ${runtime}: ${targetPath}`);
+
+}
 
 function configureClaudeMcp(bridgePath) {
   const expected = {
