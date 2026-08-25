@@ -10,7 +10,6 @@ import { join, resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const tempHome = await mkdtemp(join(tmpdir(), 'harvest-skill-registration-'));
 const configPath = join(tempHome, 'config.json');
-const importedConfigPath = join(tempHome, 'imported-config.json');
 const rawToken = `hvst_live_${'a'.repeat(43)}`;
 const requests = [];
 
@@ -24,19 +23,6 @@ const server = createServer(async (request, response) => {
     authorization: request.headers.authorization,
   });
   response.setHeader('Content-Type', 'application/json');
-  if (request.url === '/api/register/send') {
-    response.end(JSON.stringify({ ok: true, expires_in_seconds: 600 }));
-    return;
-  }
-  if (request.url === '/api/register/verify') {
-    response.end(JSON.stringify({
-      account: { account_id: 'acct_test' },
-      agent: { agent_id: 'agent_test' },
-      credential: { token: rawToken, fingerprint: 'aaaaaaaaaaaa' },
-      trial: { enabled: true, live_charges: false },
-    }));
-    return;
-  }
   if (request.url === '/mcp' && body && JSON.parse(body).method === 'initialize') {
     response.setHeader('Mcp-Session-Id', 'registration-smoke');
     response.setHeader('Content-Type', 'text/event-stream');
@@ -71,7 +57,6 @@ try {
     ['scripts/register.mjs', 'import-env'],
     {
       ...env,
-      HARVEST_CONFIG_PATH: importedConfigPath,
       HARVEST_TOKEN: rawToken,
       HARVEST_REGISTRATION_API_URL: apiUrl,
     },
@@ -79,39 +64,23 @@ try {
   assertJson(imported.stdout, {
     event: 'credential_saved',
     api_key_prefix: createHash('sha256').update(rawToken).digest('hex').slice(0, 12),
-    saved: importedConfigPath,
+    saved: configPath,
   });
-  const importedSaved = JSON.parse(await readFile(importedConfigPath, 'utf8'));
+  const importedSaved = JSON.parse(await readFile(configPath, 'utf8'));
   if (importedSaved.token !== rawToken || importedSaved.api_url !== apiUrl) {
     throw new Error('imported environment credential config mismatch');
   }
-  if (process.platform !== 'win32' && ((await stat(importedConfigPath)).mode & 0o777) !== 0o600) {
+  if (process.platform !== 'win32' && ((await stat(configPath)).mode & 0o777) !== 0o600) {
     throw new Error('imported environment credential config mode is not 0600');
   }
-
-  const sent = await expectPass([
-    'scripts/register.mjs', 'send', '--email', 'New.User@example.com', '--api-url', apiUrl,
-  ], env);
-  assertJson(sent.stdout, { event: 'otp_sent', expires_in_seconds: 600 });
-
-  const verified = await expectPass([
-    'scripts/register.mjs', 'verify', '--email', 'New.User@example.com', '--code', '123456',
-    '--api-url', apiUrl,
-  ], env);
-  assertJson(verified.stdout, {
-    event: 'registered',
-    account_id: 'acct_test',
-    agent_id: 'agent_test',
-    api_key_prefix: 'aaaaaaaaaaaa',
-  });
 
   const probe = await expectPass([
     'scripts/register.mjs', 'probe', '--mcp-url', `${apiUrl}/mcp`,
   ], env);
   assertJson(probe.stdout, { event: 'mcp_probe_pass' });
 
-  const combinedOutput = `${imported.stdout}${imported.stderr}${sent.stdout}${sent.stderr}${verified.stdout}${verified.stderr}${probe.stdout}${probe.stderr}`;
-  if (combinedOutput.includes(rawToken) || combinedOutput.includes('123456')) {
+  const combinedOutput = `${imported.stdout}${imported.stderr}${probe.stdout}${probe.stderr}`;
+  if (combinedOutput.includes(rawToken)) {
     throw new Error('credential material leaked to process output');
   }
   const saved = JSON.parse(await readFile(configPath, 'utf8'));
@@ -120,14 +89,19 @@ try {
     throw new Error('registration config mode is not 0600');
   }
 
-  const expectedPaths = ['/api/register/send', '/api/register/verify', '/mcp', '/mcp', '/mcp'];
+  const registrationSource = await readFile(resolve(root, 'scripts', 'register.mjs'), 'utf8');
+  if (/api\/register\/(?:send|verify)|action === '(?:send|verify)'/.test(registrationSource)) {
+    throw new Error('email-code registration remains reachable in the public helper');
+  }
+
+  const expectedPaths = ['/mcp', '/mcp', '/mcp'];
   if (JSON.stringify(requests.map((request) => request.path)) !== JSON.stringify(expectedPaths)) {
     throw new Error(`unexpected request path sequence: ${requests.map((request) => request.path).join(',')}`);
   }
-  for (const request of requests.slice(2)) {
+  for (const request of requests) {
     if (request.authorization !== `Bearer ${rawToken}`) throw new Error('MCP request missed saved bearer token');
   }
-  console.log('PASS clone_skill_register_key_mcp=green output_secrets=0 config_mode=private');
+  console.log('PASS dashboard_key_import_mcp=green email_registration=absent output_secrets=0 config_mode=private');
 } finally {
   await new Promise((done) => server.close(() => done()));
   await rm(tempHome, { recursive: true, force: true });

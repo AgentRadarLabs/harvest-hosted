@@ -1,0 +1,15 @@
+packed: harvest-hosted-0.1.2.tgz
+installed into: /var/folders/r2/mdgrq2z1613gp9s9s5cmt0h80000gn/T/harvest-launcher-smoke-tzqtQE
+invoked from: /var/folders/r2/mdgrq2z1613gp9s9s5cmt0h80000gn/T/harvest-launcher-smoke-tzqtQE/a project with spaces
+command: node_modules/.bin/harvest-hosted claude --model opus -p join the meeting --verbose
+stub-claude argv: --dangerously-load-development-channels server:harvest-hosted --model opus -p join the meeting --verbose
+stub-claude cwd: /private/var/folders/r2/mdgrq2z1613gp9s9s5cmt0h80000gn/T/harvest-launcher-smoke-tzqtQE/a project with spaces
+stub-claude HARVEST_ vars: 0
+launcher exit code: 42
+ok   channels scope present once, first
+ok   user arguments intact and in order
+ok   caller's working directory used
+ok   no credential on the command line
+ok   no HARVEST_ variables injected
+ok   Claude's exit code returned
+install smoke: PASS

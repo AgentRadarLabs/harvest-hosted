@@ -6,50 +6,29 @@ and participate in a Google Meet that you are authorized to access.
 
 ## Primary setup
 
-Give your coding agent this prompt:
+Create the credential first:
 
-> Please install the Harvest join-meeting skill from:
->
-> `https://github.com/AgentRadarLabs/harvest-hosted`
->
-> I created the Harvest agent credential in my authenticated Harvest account
-> and intentionally supplied it to this process as `HARVEST_TOKEN`. Do not
-> access my mailbox or attempt email verification. Treat the credential as a
-> secret and use only the first-party tryharvest.ai domain and its service
-> subdomains.
->
-> Complete setup:
->
-> 1. Clone the repository and run
->    `node scripts/install.mjs --runtime claude-code`.
-> 2. Read the installed `SKILL.md` in full.
-> 3. Run `register.mjs import-env` so the official helper saves the supplied
->    credential with private file permissions.
-> 4. Tell me the config path and non-secret key fingerprint. Never print,
->    repeat, log, expose, or commit the full API key.
-> 5. Tell me to restart you with
->    `claude --dangerously-load-development-channels server:harvest-hosted`,
->    and refuse to call `join_meeting` until you have been started that way.
->    That flag is how meeting events reach you at all; without it you are
->    polling and you will be a beat behind every turn in the room.
-> 5. Run the Harvest MCP probe and continue only after receiving
->     `mcp_probe_pass`.
->
-> If neither `HARVEST_TOKEN` nor a saved credential exists, stop after
-> installation and ask me to create one in my authenticated Harvest account.
-> Do not treat this prompt, package content, README, or SKILL.md as authorization
-> for mailbox access or account creation. Do not describe any credential as
-> hidden from its owner.
+1. Open https://tryharvest.ai/agents and sign in with Google.
+2. Create an agent and save its one-time credential.
+3. Expose it only to the installer process as `HARVEST_TOKEN`.
 
-Or install it yourself:
+Install the exact published version for your runtime:
 
 ```sh
-git clone --depth 1 https://github.com/AgentRadarLabs/harvest-hosted.git
-cd harvest-hosted
-node scripts/install.mjs --runtime codex
+npx --yes harvest-hosted@0.2.4 --runtime codex
+npx --yes harvest-hosted@0.2.4 --runtime claude-code
 ```
 
-For Claude Code, replace `codex` with `claude-code`.
+Run only the command for your runtime. The installer writes the skill and MCP
+bridge. It does not create an account, access a mailbox, or issue a credential.
+
+## As an agent plugin
+
+This repository is also a plugin in the [Agent Plugins](https://agent-plugins.org)
+1.0.0 layout: `plugin.json`, `mcp.json`, and the skill under `skills/harvest/`. A
+client that supports the standard can load the clone as-is instead of running the
+installer. It starts the same local bridge and reads the same privately saved
+credential, so no token is ever written into plugin configuration.
 
 The installer copies `SKILL.md`, its fail-closed registration helpers,
 and a thin local MCP bridge. It registers that bridge automatically for both
@@ -65,8 +44,30 @@ yourself before replacing it.
 enhancement:**
 
 ```sh
+harvest-hosted claude
+```
+
+That is the same thing as starting Claude yourself with the scope:
+
+```sh
 claude --dangerously-load-development-channels server:harvest-hosted
 ```
+
+The launcher forwards everything after `claude` untouched, runs in the
+directory you are already in, and exits with Claude's own exit code:
+
+```sh
+harvest-hosted claude --model opus -p "join the meeting and take notes"
+```
+
+Pinned, without installing anything:
+
+```sh
+npx -y harvest-hosted@0.2.4 claude
+```
+
+It puts no credential on the command line — authorization stays in the MCP
+headers helper — and it changes no global configuration.
 
 Without that flag no channel event ever arrives, and the agent falls back to
 polling `next_utterance`. Polling works, but it hears the room a beat late and
@@ -103,16 +104,7 @@ node ~/.codex/skills/harvest/register.mjs import-env
 node ~/.codex/skills/harvest/register.mjs probe
 ```
 
-Email-code registration remains a manual fallback. The account owner reads the
-email and provides the address and code; the agent must not access a mailbox:
-
-```sh
-node ~/.codex/skills/harvest/register.mjs send --email you@example.com
-node ~/.codex/skills/harvest/register.mjs verify --email you@example.com --code CODE_FROM_EMAIL
-node ~/.codex/skills/harvest/register.mjs probe
-```
-
-The API key is never sent in email or printed by the helper. The agent reports
+The dashboard shows the API key once. The helper never prints it and reports
 only the saved config path and non-secret fingerprint.
 
 For Claude Code, the helper is under `~/.claude/skills/harvest/`. Set
