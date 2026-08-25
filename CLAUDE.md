@@ -38,8 +38,8 @@ The supported unattended path is owner-provisioned authentication:
    non-secret fingerprint, then runs `register.mjs probe`.
 
 If no owner-provided or saved credential exists, stop and ask the user to create
-one. Email-code registration is a human-in-the-loop fallback: the user reads the
-message and supplies the code. Claude must not retrieve the message itself.
+one at https://tryharvest.ai/agents. Email-code registration is not a supported
+client path.
 
 Do not weaken these boundaries to make onboarding appear fully autonomous. If a
 step requires human account access, complete the safe subset and state the one

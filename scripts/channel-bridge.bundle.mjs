@@ -30763,12 +30763,12 @@ function validateRegistration(value) {
 // scripts/channel-bridge.mjs
 var options = parseOptions(process.argv.slice(2));
 var token = readToken(options.tokenEnv);
-var remote = new Client({ name: "harvest-hosted-bridge", version: "0.1.2" });
+var remote = new Client({ name: "harvest-hosted-bridge", version: "0.2.4" });
 var remoteTransport = new StreamableHTTPClientTransport(new URL(options.url), {
   requestInit: { headers: { Authorization: `Bearer ${token}` } }
 });
 var local = new Server(
-  { name: "harvest-hosted", version: "0.1.2" },
+  { name: "harvest-hosted", version: "0.2.4" },
   {
     capabilities: {
       experimental: { "claude/channel": {} },

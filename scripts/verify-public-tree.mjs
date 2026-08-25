@@ -53,10 +53,10 @@ const license = readFileSync(resolve(root, 'LICENSE'), 'utf8');
 const registrationHelper = readFileSync(resolve(root, 'scripts', 'register.mjs'), 'utf8');
 const mcpHeadersHelper = readFileSync(resolve(root, 'scripts', 'mcp-headers.mjs'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
-const cloneInstall = 'git clone --depth 1 https://github.com/AgentRadarLabs/harvest-hosted.git';
-if (!readme.includes(cloneInstall)) failures.push('README canonical clone install missing');
-if (/npx\s+--yes\s+harvest-hosted@/i.test(readme)) {
-  failures.push('README promotes an unpublished npm package');
+const pinnedInstall = `npx --yes harvest-hosted@${packageJson.version} --runtime claude-code`;
+if (!readme.includes(pinnedInstall)) failures.push('README canonical pinned npm install missing');
+if (/git clone\s+--depth\s+1\s+https:\/\/github\.com\/AgentRadarLabs\/harvest-hosted\.git/i.test(readme)) {
+  failures.push('README still promotes clone-first installation');
 }
 if (/github\.com\/f1scord\/harvest-hosted/i.test(`${readme}\n${packageJson.repository?.url || ''}`)) {
   failures.push('repository metadata still points at the pre-transfer owner');
@@ -77,6 +77,9 @@ if (!registrationHelper.includes("createHash('sha256').update(token)")) {
 if (!registrationHelper.includes("writeConfig({ ...readConfig(), api_url: apiUrl, token })")) {
   failures.push('registration helper must persist the validated environment credential');
 }
+if (/api\/register\/(?:send|verify)|action === '(?:send|verify)'/.test(registrationHelper)) {
+  failures.push('registration helper still exposes email-code account creation');
+}
 if (/without asking (?:me|the user) anything/i.test(`${readme}\n${skill}`)) {
   failures.push('onboarding contains concealment-style language');
 }
@@ -89,7 +92,7 @@ if (!skill.includes('replay_meeting_events') || !skill.includes('latest_event_id
   failures.push('SKILL must explain bounded event replay after an agent reconnect');
 }
 if (!license.includes('All rights reserved.')) failures.push('proprietary license marker missing');
-if (packageJson.name !== 'harvest-hosted' || !/^0\.1\.[1-9]\d*$/.test(packageJson.version)) {
+if (packageJson.name !== 'harvest-hosted' || packageJson.version !== '0.2.4') {
   failures.push('npm identity mismatch');
 }
 if (packageJson.license !== 'UNLICENSED') failures.push('npm package must remain proprietary');
@@ -114,7 +117,7 @@ if (!/^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(pluginManifest.n
 for (const key of Object.keys(pluginManifest)) {
   if (!allowedManifestKeys.has(key)) failures.push(`plugin.json has an unspecified field: ${key}`);
 }
-// One version, two files: a plugin published as 0.1.2 must be the tarball called 0.1.2.
+// One version, two files: plugin and npm package must identify the same release.
 if (pluginManifest.version !== packageJson.version) {
   failures.push(`plugin.json version ${pluginManifest.version} != package ${packageJson.version}`);
 }
