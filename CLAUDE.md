@@ -1,4 +1,6 @@
-# Claude Code project context
+# Claude Code Project Context — Harvest Hosted
+
+Canonical machine operating rules, ownership boundaries, and verification commands live in [`AGENTS.md`](./AGENTS.md).
 
 This is the official first-party distribution repository for Harvest AI at
 https://tryharvest.ai. Harvest lets a user's existing AI agent join and

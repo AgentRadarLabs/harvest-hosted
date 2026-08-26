@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const allowedTopLevel = new Set([
-  '.git', '.gitignore', 'CLAUDE.md', 'LICENSE', 'README.md', 'SECURITY.md', 'scripts',
+  '.git', '.github', '.gitignore', 'AGENTS.md', 'CLAUDE.md', 'LICENSE', 'README.md', 'SECURITY.md', 'scripts',
   // Agent Plugins 1.0.0 layout: the manifest, the MCP servers, and the skill in its own directory.
   'plugin.json', 'mcp.json', 'skills',
   // Transcripts a reviewer reads instead of rerunning. Repository-only: the published tarball is
