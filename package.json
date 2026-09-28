@@ -7,6 +7,9 @@
   "bin": {
     "harvest-hosted": "scripts/install.mjs"
   },
+  "exports": {
+    "./api": "./scripts/api-client.mjs"
+  },
   "files": [
     "LICENSE",
     "README.md",
@@ -15,6 +18,7 @@
     "mcp.json",
     "skills/harvest/SKILL.md",
     "scripts/channel-bridge.bundle.mjs",
+    "scripts/api-client.mjs",
     "scripts/install.mjs",
     "scripts/launch-claude.mjs",
     "scripts/mcp-headers.mjs",
@@ -23,7 +27,7 @@
   "scripts": {
     "build:bridge": "node scripts/build-channel-bridge.mjs",
     "prepack": "npm run build:bridge",
-    "test": "npm run build:bridge && node scripts/verify-public-tree.mjs && node scripts/verify-registration.mjs && node scripts/verify-claude-install.mjs && node scripts/verify-codex-install.mjs && node scripts/verify-claude-launcher.mjs"
+    "test": "npm run build:bridge && node scripts/verify-public-tree.mjs && node scripts/verify-api-client.mjs && node scripts/verify-registration.mjs && node scripts/verify-claude-install.mjs && node scripts/verify-codex-install.mjs && node scripts/verify-claude-launcher.mjs"
   },
   "engines": {
     "node": ">=18"
