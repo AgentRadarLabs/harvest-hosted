@@ -31,5 +31,11 @@ const unauthorized = new HarvestApi({
 });
 await assert.rejects(unauthorized.agents(), /Harvest API 401: unauthorized/);
 
+const invalid = new HarvestApi({
+  apiKey: testKey,
+  fetch: async () => ({ ok: false, status: 400, json: async () => ({ reason: 'invalid_identity' }) }),
+});
+await assert.rejects(invalid.createAgent({ identity_id: 'missing' }), /Harvest API 400: invalid_identity/);
+
 const offline = new HarvestApi({ apiKey: testKey, fetch: async () => { throw new Error('offline'); } });
 await assert.rejects(offline.agents(), /offline/);
