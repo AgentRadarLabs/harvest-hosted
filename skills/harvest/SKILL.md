@@ -161,10 +161,8 @@ only carries transcripts; continue until the meeting ends.
 what the person is saying *right now*. Neither advances the durable transcript
 cursor, so you will still receive the final afterwards.
 
-Start composing your answer from a partial. Do not wait for the final to begin
-thinking — by the time it arrives the room has been waiting for you. Speak once
-you are confident what was asked; if the final then contradicts your reading,
-correct yourself in one short sentence rather than repeating everything.
+Start composing your answer from a partial. Wait for the confirmed non-self
+final before speaking; a partial is only a hypothesis and may change.
 
 Rules that matter more than anything else in this file:
 

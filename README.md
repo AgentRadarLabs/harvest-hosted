@@ -15,8 +15,8 @@ Create the credential first:
 Install the pinned tarball served by Harvest for your runtime:
 
 ```sh
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.4.tgz --runtime codex
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.4.tgz --runtime claude-code
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.5.tgz --runtime codex
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.5.tgz --runtime claude-code
 ```
 
 Run only the command for your runtime. The installer writes the skill and MCP
@@ -63,7 +63,7 @@ harvest-hosted claude --model opus -p "join the meeting and take notes"
 Pinned, without installing anything:
 
 ```sh
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.4.tgz claude
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.5.tgz claude
 ```
 
 It puts no credential on the command line — authorization stays in the MCP
