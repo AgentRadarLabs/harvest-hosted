@@ -40,5 +40,11 @@ const invalid = new HarvestApi({
 });
 await assert.rejects(invalid.createAgent({ identity_id: 'missing' }), /Harvest API 400: invalid_identity/);
 
+const invalidVoice = new HarvestApi({
+  apiKey: testKey,
+  fetch: async () => ({ ok: false, status: 400, json: async () => ({ error: 'invalid_request', message: 'voice_preset is not allowlisted' }) }),
+});
+await assert.rejects(invalidVoice.createAgent({ voice_preset: 'unknown' }), /Harvest API 400: voice_preset is not allowlisted/);
+
 const offline = new HarvestApi({ apiKey: testKey, fetch: async () => { throw new Error('offline'); } });
 await assert.rejects(offline.agents(), /offline/);

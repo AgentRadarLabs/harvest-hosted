@@ -18,7 +18,7 @@ export class HarvestApi {
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(`Harvest API ${response.status}: ${data?.reason ?? 'request failed'}`);
+    if (!response.ok) throw new Error(`Harvest API ${response.status}: ${data?.message ?? data?.reason ?? data?.error ?? 'request failed'}`);
     return data;
   }
 

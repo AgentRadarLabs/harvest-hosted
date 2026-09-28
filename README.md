@@ -34,16 +34,21 @@ meeting connection only.
 import { HarvestApi } from 'harvest-hosted/api';
 
 const api = new HarvestApi({ apiKey: process.env.HARVEST_DEV_KEY });
-const voices = await api.voices({ locale: 'ru-RU', tag: 'friendly' });
-const avatars = await api.avatars();
+const { voices, identities, backdrops } = await api.catalog({ locale: 'ru-RU', tag: 'friendly' });
 const { agent, credential } = await api.createAgent({
   display_name: 'Researcher',
-  identity_id: avatars[0].identity_id,
+  identity_id: identities[0].identity_id,
+  avatar_slug: identities[0].avatar_slug,
+  color: '#ff6a45',
   voice_preset: voices[0].voice_preset,
+  backdrop_slug: backdrops.find((slug) => slug === 'grid') ?? backdrops[0],
 });
 // Save credential.token once and give it only to that agent's runtime.
 await api.configureAgent(agent.agent_id, {
-  identity_id: avatars[0].identity_id,
+  display_name: 'Outreach Researcher',
+  identity_id: identities[0].identity_id,
+  avatar_slug: identities[0].avatar_slug,
+  color: '#8b5cf6',
   voice_preset: voices[0].voice_preset,
 });
 ```
