@@ -16,7 +16,7 @@ Canonical operating rules and architecture guidance for AI coding assistants wor
 - **Agent Plugin 1.0.0**: `plugin.json`, `mcp.json`, and `skills/harvest/SKILL.md`.
 - **Token Registration & Probe**: `scripts/register.mjs` (imports `HARVEST_TOKEN`, writes private `~/.harvest-hosted/config.json` with `0o600` permissions, probes MCP endpoint).
 - **Claude Launcher**: `harvest-hosted claude` (launches Claude Code with `--dangerously-load-development-channels server:harvest-hosted`).
-- **Codex Bounded Polling**: `next_utterance` MCP tool with `include_partials: true`.
+- **Codex Bounded Reader**: `replay_meeting_events` with `wait_secs` and `include_partials` when the hosted server supports them; otherwise `next_utterance` with `include_partials: true`.
 
 ## 4. Directory Map
 ```

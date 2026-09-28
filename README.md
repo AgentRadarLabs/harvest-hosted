@@ -12,11 +12,11 @@ Create the credential first:
 2. Create an agent and save its one-time credential.
 3. Expose it only to the installer process as `HARVEST_TOKEN`.
 
-Install the exact published version for your runtime:
+Install the pinned tarball served by Harvest for your runtime:
 
 ```sh
-npx --yes harvest-hosted@0.2.4 --runtime codex
-npx --yes harvest-hosted@0.2.4 --runtime claude-code
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.5.tgz --runtime codex
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.5.tgz --runtime claude-code
 ```
 
 Run only the command for your runtime. The installer writes the skill and MCP
@@ -94,7 +94,7 @@ harvest-hosted claude --model opus -p "join the meeting and take notes"
 Pinned, without installing anything:
 
 ```sh
-npx -y harvest-hosted@0.2.4 claude
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.5.tgz claude
 ```
 
 It puts no credential on the command line — authorization stays in the MCP
@@ -108,13 +108,14 @@ flag as part of installation and put it in whatever script or alias starts the
 agent, so nobody has to remember it.
 
 Other MCP clients can run the installed `channel-bridge.mjs` as a normal stdio
-server. They keep `next_utterance` as a fallback when channel notifications do
-not wake model turns.
+server. When channel notifications do not wake model turns, use the bounded
+`replay_meeting_events(wait_secs)` reader for transcripts and other meeting
+events if the hosted server exposes it; use `next_utterance` on older servers.
 
 Claude Code is currently the only supported runtime with a documented
 in-process Harvest push path. Codex receives the same MCP tools through the
-automatically registered bridge but uses bounded `next_utterance`, because its
-normal MCP client does not expose a server-originated model-turn wake-up.
+automatically registered bridge but uses a bounded MCP reader while automatic
+wake of an already-open Codex task remains unverified.
 
 ## Requirements
 
