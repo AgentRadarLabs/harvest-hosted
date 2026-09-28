@@ -12,11 +12,11 @@ Create the credential first:
 2. Create an agent and save its one-time credential.
 3. Expose it only to the installer process as `HARVEST_TOKEN`.
 
-Install the exact published version for your runtime:
+Install the pinned tarball served by Harvest for your runtime:
 
 ```sh
-npx --yes harvest-hosted@0.2.4 --runtime codex
-npx --yes harvest-hosted@0.2.4 --runtime claude-code
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.4.tgz --runtime codex
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.4.tgz --runtime claude-code
 ```
 
 Run only the command for your runtime. The installer writes the skill and MCP
@@ -63,7 +63,7 @@ harvest-hosted claude --model opus -p "join the meeting and take notes"
 Pinned, without installing anything:
 
 ```sh
-npx -y harvest-hosted@0.2.4 claude
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.4.tgz claude
 ```
 
 It puts no credential on the command line — authorization stays in the MCP

@@ -53,8 +53,8 @@ const license = readFileSync(resolve(root, 'LICENSE'), 'utf8');
 const registrationHelper = readFileSync(resolve(root, 'scripts', 'register.mjs'), 'utf8');
 const mcpHeadersHelper = readFileSync(resolve(root, 'scripts', 'mcp-headers.mjs'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
-const pinnedInstall = `npx --yes harvest-hosted@${packageJson.version} --runtime claude-code`;
-if (!readme.includes(pinnedInstall)) failures.push('README canonical pinned npm install missing');
+const pinnedInstall = `npx --yes https://tryharvest.ai/client-harvest-hosted-${packageJson.version}.tgz --runtime claude-code`;
+if (!readme.includes(pinnedInstall)) failures.push('README canonical pinned hosted install missing');
 if (/git clone\s+--depth\s+1\s+https:\/\/github\.com\/AgentRadarLabs\/harvest-hosted\.git/i.test(readme)) {
   failures.push('README still promotes clone-first installation');
 }
