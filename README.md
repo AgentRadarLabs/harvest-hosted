@@ -34,7 +34,7 @@ meeting connection only.
 import { HarvestApi } from 'harvest-hosted/api';
 
 const api = new HarvestApi({ apiKey: process.env.HARVEST_DEV_KEY });
-const voices = await api.voices();
+const voices = await api.voices({ locale: 'ru-RU', tag: 'friendly' });
 const avatars = await api.avatars();
 const { agent, credential } = await api.createAgent({
   display_name: 'Researcher',
