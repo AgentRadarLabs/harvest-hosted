@@ -24,7 +24,8 @@ bridge. It does not create an account, access a mailbox, or issue a credential.
 
 ## Developer API
 
-For a product integration, sign in at https://tryharvest.ai/docs/api and create
+For a product integration, first get written permission from Harvest AI under
+the [license](LICENSE), then sign in at https://tryharvest.ai/docs/api and create
 an account developer key. Keep `HARVEST_DEV_KEY` on your server. It grants
 account-wide agent management; the per-agent `HARVEST_TOKEN` is for the MCP
 meeting connection only.
