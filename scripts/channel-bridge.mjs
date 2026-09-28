@@ -13,12 +13,12 @@ import { openParticipantPageTunnel } from './participant-page-tunnel.mjs';
 
 const options = parseOptions(process.argv.slice(2));
 const token = readToken(options.tokenEnv);
-const remote = new Client({ name: 'harvest-hosted-bridge', version: '0.2.5' });
+const remote = new Client({ name: 'harvest-hosted-bridge', version: '0.3.0' });
 const remoteTransport = new StreamableHTTPClientTransport(new URL(options.url), {
   requestInit: { headers: { Authorization: `Bearer ${token}` } },
 });
 const local = new Server(
-  { name: 'harvest-hosted', version: '0.2.5' },
+  { name: 'harvest-hosted', version: '0.3.0' },
   {
     capabilities: {
       experimental: { 'claude/channel': {} },

@@ -50,8 +50,8 @@ await api.configureAgent(agent.agent_id, {
 
 The API also exposes `agents()`, `agent(id)`, `issueAgentToken(id)`, and
 `revokeAgentToken(id, credentialId)`. Rotating the developer key invalidates its
-previous value immediately. The API and client are available from this checkout;
-the published npm version remains unchanged until a new release is approved.
+previous value immediately. The pinned 0.2.5 hosted installer above predates
+this API; npm releases are versioned separately.
 
 ## As an agent plugin
 
