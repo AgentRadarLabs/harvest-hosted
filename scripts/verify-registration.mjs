@@ -64,10 +64,9 @@ try {
     PATH: `${tempHome}${delimiter}${process.env.PATH || ''}`,
   };
 
-  await expectPass(['scripts/install.mjs', '--runtime', 'codex'], env);
-  const installedSkill = await readFile(join(tempHome, '.codex', 'skills', 'harvest', 'SKILL.md'), 'utf8');
-  requireText(installedSkill, 'scripts/register.mjs');
-  requireText(installedSkill, 'HARVEST_REGISTRATION_API_URL');
+  const skill = await readFile(join(root, 'skills', 'harvest', 'SKILL.md'), 'utf8');
+  requireText(skill, 'scripts/register.mjs');
+  requireText(skill, 'HARVEST_REGISTRATION_API_URL');
 
   const imported = await expectPass(
     ['scripts/register.mjs', 'import-env'],

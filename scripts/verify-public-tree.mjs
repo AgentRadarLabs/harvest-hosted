@@ -148,6 +148,7 @@ const expectedPackedFiles = [
   'LICENSE', 'README.md', 'SECURITY.md', 'package.json', 'scripts/install.mjs', 'scripts/launch-claude.mjs',
   'plugin.json', 'mcp.json', 'skills/harvest/SKILL.md',
   'scripts/channel-bridge.bundle.mjs', 'scripts/mcp-headers.mjs',
+  'scripts/api-client.mjs',
   'scripts/register.mjs',
 ].sort();
 if (packedFiles.some((file) => file === 'evidence' || file.startsWith('evidence/'))) {

@@ -22,6 +22,37 @@ npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.5.tgz --runtime claude
 Run only the command for your runtime. The installer writes the skill and MCP
 bridge. It does not create an account, access a mailbox, or issue a credential.
 
+## Developer API
+
+For a product integration, first get written permission from Harvest AI under
+the [license](LICENSE), then sign in at https://tryharvest.ai/docs/api and create
+an account developer key. Keep `HARVEST_DEV_KEY` on your server. It grants
+account-wide agent management; the per-agent `HARVEST_TOKEN` is for the MCP
+meeting connection only.
+
+```js
+import { HarvestApi } from 'harvest-hosted/api';
+
+const api = new HarvestApi({ apiKey: process.env.HARVEST_DEV_KEY });
+const voices = await api.voices();
+const avatars = await api.avatars();
+const { agent, credential } = await api.createAgent({
+  display_name: 'Researcher',
+  identity_id: avatars[0].identity_id,
+  voice_preset: voices[0].voice_preset,
+});
+// Save credential.token once and give it only to that agent's runtime.
+await api.configureAgent(agent.agent_id, {
+  identity_id: avatars[0].identity_id,
+  voice_preset: voices[0].voice_preset,
+});
+```
+
+The API also exposes `agents()`, `agent(id)`, `issueAgentToken(id)`, and
+`revokeAgentToken(id, credentialId)`. Rotating the developer key invalidates its
+previous value immediately. The API and client are available from this checkout;
+the published npm version remains unchanged until a new release is approved.
+
 ## As an agent plugin
 
 This repository is also a plugin in the [Agent Plugins](https://agent-plugins.org)
