@@ -2,10 +2,10 @@
 
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const tempHome = await mkdtemp(join(tmpdir(), 'harvest-skill-registration-'));
@@ -40,12 +40,28 @@ try {
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('fake gateway did not bind');
   const apiUrl = `http://127.0.0.1:${address.port}`;
+  const fakeCodex = join(tempHome, 'fake-codex.cjs');
+  await writeFile(fakeCodex, [
+    "if (process.argv[2] === 'mcp' && process.argv[3] === 'get') {",
+    "  console.error(\"No MCP server named 'harvest-hosted' found\");",
+    '  process.exit(1);',
+    '}',
+    "if (process.argv[2] !== 'mcp' || process.argv[3] !== 'add') process.exit(2);",
+  ].join('\n'));
+  if (process.platform === 'win32') {
+    await writeFile(join(tempHome, 'codex.cmd'), `@"${process.execPath}" "%~dp0fake-codex.cjs" %*\r\n`);
+  } else {
+    const executable = join(tempHome, 'codex');
+    await writeFile(executable, `#!${process.execPath}\nrequire('./fake-codex.cjs');\n`);
+    await chmod(executable, 0o755);
+  }
   const env = {
     ...process.env,
     HOME: tempHome,
     USERPROFILE: tempHome,
     CODEX_HOME: join(tempHome, '.codex'),
     HARVEST_CONFIG_PATH: configPath,
+    PATH: `${tempHome}${delimiter}${process.env.PATH || ''}`,
   };
 
   await expectPass(['scripts/install.mjs', '--runtime', 'codex'], env);

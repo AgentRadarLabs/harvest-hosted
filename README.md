@@ -77,13 +77,14 @@ flag as part of installation and put it in whatever script or alias starts the
 agent, so nobody has to remember it.
 
 Other MCP clients can run the installed `channel-bridge.mjs` as a normal stdio
-server. They keep `next_utterance` as a fallback when channel notifications do
-not wake model turns.
+server. When channel notifications do not wake model turns, use the bounded
+`replay_meeting_events(wait_secs)` reader for transcripts and other meeting
+events if the hosted server exposes it; use `next_utterance` on older servers.
 
 Claude Code is currently the only supported runtime with a documented
 in-process Harvest push path. Codex receives the same MCP tools through the
-automatically registered bridge but uses bounded `next_utterance`, because its
-normal MCP client does not expose a server-originated model-turn wake-up.
+automatically registered bridge but uses a bounded MCP reader while automatic
+wake of an already-open Codex task remains unverified.
 
 ## Requirements
 
