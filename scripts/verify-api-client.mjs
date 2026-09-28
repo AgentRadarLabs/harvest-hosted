@@ -23,6 +23,9 @@ await api.agent('agent/2');
 assert.equal(calls[2].url, 'https://example.test/api/agents/agent%2F2');
 await api.revokeAgentToken('agent/2', 'cred/3');
 assert.equal(calls[3].url, 'https://example.test/api/agents/agent%2F2/credentials/cred%2F3/revoke');
+assert.deepEqual(await api.voices({ locale: 'ru-RU', tag: 'friendly voice', gender: 'female', ignored: 'x' }), [{ voice_preset: 'puck' }]);
+assert.equal(calls[4].url, 'https://example.test/api/catalog/identities?locale=ru-RU&tag=friendly+voice&gender=female');
+assert.equal(calls[4].headers.Authorization, 'Bearer hvst_dev_test');
 assert.throws(() => new HarvestApi({ apiKey: ['hvst', 'live', 'wrong_scope'].join('_') }), /developer API key required/);
 
 const unauthorized = new HarvestApi({

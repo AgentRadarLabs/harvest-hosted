@@ -22,8 +22,16 @@ export class HarvestApi {
     return data;
   }
 
-  catalog() { return this.request('/api/catalog/identities'); }
-  async voices() { return (await this.catalog()).voices; }
+  catalog(filters = {}) {
+    const query = new URLSearchParams();
+    for (const field of ['locale', 'tag', 'gender']) {
+      const value = filters[field];
+      if (typeof value === 'string' && value.trim()) query.set(field, value.trim());
+    }
+    const suffix = query.toString();
+    return this.request(`/api/catalog/identities${suffix ? `?${suffix}` : ''}`);
+  }
+  async voices(filters) { return (await this.catalog(filters)).voices; }
   async avatars() { return (await this.catalog()).identities; }
   agents() { return this.request('/api/agents'); }
   agent(id) { return this.request(`/api/agents/${encodeURIComponent(id)}`); }
