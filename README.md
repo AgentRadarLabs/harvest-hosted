@@ -63,6 +63,8 @@ Reuse the same `idempotencyKey` when retrying a timed-out create request. The
 first request can still succeed; a repeated key then returns 409 and never
 returns the first one-time token again. Check `agents()` and issue a fresh token
 with `issueAgentToken(id)` if you lost the original response.
+For rate limits, catch an error with `status === 429` and wait its
+`retryAfterSeconds` before retrying.
 
 ## As an agent plugin
 

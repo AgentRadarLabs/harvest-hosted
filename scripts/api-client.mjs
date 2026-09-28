@@ -19,7 +19,13 @@ export class HarvestApi {
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(`Harvest API ${response.status}: ${data?.message ?? data?.reason ?? data?.error ?? 'request failed'}`);
+    if (!response.ok) {
+      const error = new Error(`Harvest API ${response.status}: ${data?.message ?? data?.reason ?? data?.error ?? 'request failed'}`);
+      error.status = response.status;
+      const retryAfter = response.headers?.get?.('Retry-After');
+      if (response.status === 429 && /^\d+$/.test(retryAfter ?? '')) error.retryAfterSeconds = Number(retryAfter);
+      throw error;
+    }
     return data;
   }
 
