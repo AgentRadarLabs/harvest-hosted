@@ -8,12 +8,13 @@ export class HarvestApi {
     this.fetch = request;
   }
 
-  async request(path, method = 'GET', body) {
+  async request(path, method = 'GET', body, headers = {}) {
     const response = await this.fetch(`${this.baseUrl}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...headers,
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
@@ -35,7 +36,10 @@ export class HarvestApi {
   async avatars() { return (await this.catalog()).identities; }
   agents() { return this.request('/api/agents'); }
   agent(id) { return this.request(`/api/agents/${encodeURIComponent(id)}`); }
-  createAgent(config) { return this.request('/api/agents', 'POST', config); }
+  createAgent(config, { idempotencyKey } = {}) {
+    return this.request('/api/agents', 'POST', config,
+      idempotencyKey === undefined ? {} : { 'Idempotency-Key': idempotencyKey });
+  }
   configureAgent(id, config) { return this.request(`/api/agents/${encodeURIComponent(id)}/identity`, 'PATCH', config); }
   issueAgentToken(id) { return this.request(`/api/agents/${encodeURIComponent(id)}/credentials`, 'POST'); }
   revokeAgentToken(id, credentialId) {

@@ -35,6 +35,7 @@ import { HarvestApi } from 'harvest-hosted/api';
 
 const api = new HarvestApi({ apiKey: process.env.HARVEST_DEV_KEY });
 const { voices, identities, backdrops } = await api.catalog({ locale: 'ru-RU', tag: 'friendly' });
+const requestKey = crypto.randomUUID(); // Persist this key before sending; reuse it on retry.
 const { agent, credential } = await api.createAgent({
   display_name: 'Researcher',
   identity_id: identities[0].identity_id,
@@ -42,7 +43,7 @@ const { agent, credential } = await api.createAgent({
   color: '#ff6a45',
   voice_preset: voices[0].voice_preset,
   backdrop_slug: backdrops.find((slug) => slug === 'grid') ?? backdrops[0],
-});
+}, { idempotencyKey: requestKey });
 // Save credential.token once and give it only to that agent's runtime.
 await api.configureAgent(agent.agent_id, {
   display_name: 'Outreach Researcher',
@@ -57,6 +58,11 @@ The API also exposes `agents()`, `agent(id)`, `issueAgentToken(id)`, and
 `revokeAgentToken(id, credentialId)`. Rotating the developer key invalidates its
 previous value immediately. The pinned 0.2.5 hosted installer above predates
 this API; npm releases are versioned separately.
+
+Reuse the same `idempotencyKey` when retrying a timed-out create request. The
+first request can still succeed; a repeated key then returns 409 and never
+returns the first one-time token again. Check `agents()` and issue a fresh token
+with `issueAgentToken(id)` if you lost the original response.
 
 ## As an agent plugin
 
