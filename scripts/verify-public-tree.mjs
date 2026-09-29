@@ -54,7 +54,7 @@ const registrationHelper = readFileSync(resolve(root, 'scripts', 'register.mjs')
 const mcpHeadersHelper = readFileSync(resolve(root, 'scripts', 'mcp-headers.mjs'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 // The hosted installer tarball is released separately from the npm package.
-const pinnedInstall = 'npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.5.tgz --runtime claude-code';
+const pinnedInstall = 'npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.7.tgz --runtime claude-code';
 if (!readme.includes(pinnedInstall)) failures.push('README canonical pinned hosted install missing');
 if (/git clone\s+--depth\s+1\s+https:\/\/github\.com\/AgentRadarLabs\/harvest-hosted\.git/i.test(readme)) {
   failures.push('README still promotes clone-first installation');

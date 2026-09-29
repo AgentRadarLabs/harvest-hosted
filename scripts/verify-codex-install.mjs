@@ -67,13 +67,22 @@ try {
     throw new Error('Codex Harvest MCP server is not enabled stdio');
   }
 
+  install(env, ['--upgrade']);
+  const editedSkill = `${readFileSync(join(target, 'SKILL.md'), 'utf8')}\nlocal edit\n`;
+  writeFileSync(join(target, 'SKILL.md'), editedSkill);
+  let refused = false;
+  try { install(env, ['--upgrade']); } catch { refused = true; }
+  if (!refused || readFileSync(join(target, 'SKILL.md'), 'utf8') !== editedSkill) {
+    throw new Error('upgrade overwrote a user-modified skill');
+  }
+
   console.log('PASS codex_skill_install=green mcp_auto_config=green idempotent=green cli_secret_leaks=0');
 } finally {
   rmSync(tempHome, { recursive: true, force: true });
 }
 
-function install(env) {
-  execFileSync(process.execPath, [join(root, 'scripts', 'install.mjs'), '--runtime', 'codex'], {
+function install(env, extra = []) {
+  execFileSync(process.execPath, [join(root, 'scripts', 'install.mjs'), '--runtime', 'codex', ...extra], {
     cwd: root,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
