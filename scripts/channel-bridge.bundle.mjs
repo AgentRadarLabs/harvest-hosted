@@ -30764,7 +30764,7 @@ function validateRegistration(value) {
 var options = parseOptions(process.argv.slice(2));
 var token = readToken(options.tokenEnv);
 var local = new Server(
-  { name: "harvest-hosted", version: "0.2.5" },
+  { name: "harvest-hosted", version: "0.2.6" },
   {
     capabilities: {
       experimental: { "claude/channel": {} },
@@ -30827,7 +30827,7 @@ local.setRequestHandler(CallToolRequestSchema, async (request) => {
   return result;
 });
 async function connectRemote() {
-  const client = new Client({ name: "harvest-hosted-bridge", version: "0.2.5" });
+  const client = new Client({ name: "harvest-hosted-bridge", version: "0.2.6" });
   const transport = new StreamableHTTPClientTransport(new URL(options.url), {
     requestInit: { headers: { Authorization: `Bearer ${token}` } }
   });
