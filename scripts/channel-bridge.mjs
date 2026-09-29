@@ -13,10 +13,6 @@ import { openParticipantPageTunnel } from './participant-page-tunnel.mjs';
 
 const options = parseOptions(process.argv.slice(2));
 const token = readToken(options.tokenEnv);
-const remote = new Client({ name: 'harvest-hosted-bridge', version: '0.2.5' });
-const remoteTransport = new StreamableHTTPClientTransport(new URL(options.url), {
-  requestInit: { headers: { Authorization: `Bearer ${token}` } },
-});
 const local = new Server(
   { name: 'harvest-hosted', version: '0.2.5' },
   {
@@ -41,22 +37,16 @@ const channelNotificationSchema = z.object({
 
 let activeParticipantPage = null;
 let closing = false;
+let remote;
+let remoteTransport;
+let reconnecting;
 
-remote.setNotificationHandler(channelNotificationSchema, async (notification) => {
-  await local.notification(notification);
-  if (notification.params.meta?.event === 'meeting_disconnected') {
-    await closeParticipantPage();
-  }
-});
-remote.onerror = (error) => {
-  process.stderr.write(`harvest-hosted bridge: remote transport error: ${error.message}\n`);
-};
 local.onerror = (error) => {
   process.stderr.write(`harvest-hosted bridge: local transport error: ${error.message}\n`);
 };
 
 local.setRequestHandler(ListToolsRequestSchema, async (request) => {
-  const listed = await remote.listTools(request.params);
+  const listed = await remoteRequest((client) => client.listTools(request.params));
   return {
     ...listed,
     tools: [
@@ -85,12 +75,55 @@ local.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   let result;
   try {
-    result = await remote.callTool(request.params);
+    result = await remoteRequest((client) => client.callTool(request.params));
   } finally {
     if (request.params.name === 'leave_meeting') await closeParticipantPage();
   }
   return result;
 });
+
+async function connectRemote() {
+  const client = new Client({ name: 'harvest-hosted-bridge', version: '0.2.5' });
+  const transport = new StreamableHTTPClientTransport(new URL(options.url), {
+    requestInit: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  client.setNotificationHandler(channelNotificationSchema, async (notification) => {
+    await local.notification(notification);
+    if (notification.params.meta?.event === 'meeting_disconnected') await closeParticipantPage();
+  });
+  client.onerror = (error) => {
+    process.stderr.write(`harvest-hosted bridge: remote transport error: ${error.message}\n`);
+  };
+  try {
+    await client.connect(transport);
+  } catch (error) {
+    await client.close().catch(() => undefined);
+    throw error;
+  }
+  return { client, transport };
+}
+
+async function remoteRequest(operation) {
+  const current = remote;
+  try {
+    return await operation(current);
+  } catch (error) {
+    const message = String(error?.message ?? '');
+    if (error?.code !== 404 || !/session not found/i.test(message)) throw error;
+    if (closing) throw error;
+    if (remote === current && !reconnecting) {
+      reconnecting = (async () => {
+        const next = await connectRemote();
+        const previous = remote;
+        remote = next.client;
+        remoteTransport = next.transport;
+        await previous.close().catch(() => undefined);
+      })().finally(() => { reconnecting = undefined; });
+    }
+    await reconnecting;
+    return operation(remote);
+  }
+}
 
 async function replaceParticipantPage(args) {
   const port = Number(args?.port);
@@ -127,8 +160,8 @@ async function close() {
   closing = true;
   await closeParticipantPage();
   await local.close().catch(() => undefined);
-  await remoteTransport.terminateSession().catch(() => undefined);
-  await remote.close().catch(() => undefined);
+  await remoteTransport?.terminateSession().catch(() => undefined);
+  await remote?.close().catch(() => undefined);
 }
 
 function participantPageTool(name, description) {
@@ -229,7 +262,7 @@ process.once('SIGINT', () => { void close().finally(() => process.exit(0)); });
 process.once('SIGTERM', () => { void close().finally(() => process.exit(0)); });
 
 try {
-  await remote.connect(remoteTransport);
+  ({ client: remote, transport: remoteTransport } = await connectRemote());
   await local.connect(new StdioServerTransport());
 } catch (error) {
   await close();
