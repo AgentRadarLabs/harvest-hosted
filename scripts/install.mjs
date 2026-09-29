@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +12,16 @@ const sourcePath = resolve(repositoryRoot, 'skills', 'harvest', 'SKILL.md');
 const registrationSourcePath = resolve(repositoryRoot, 'scripts', 'register.mjs');
 const mcpHeadersSourcePath = resolve(repositoryRoot, 'scripts', 'mcp-headers.mjs');
 const bridgeSourcePath = resolve(repositoryRoot, 'scripts', 'channel-bridge.bundle.mjs');
+// Exact SHA-256 values from the published 0.2.5/0.2.6 tarballs, not Git history.
+const KNOWN_INSTALLED_SHA256 = {
+  'SKILL.md': ['67a394a5310d21357219c1a246f37af6528618c68eca2b33ed16d6efb919d354'],
+  'register.mjs': ['da59b75822b96eed4d6195e38d6a0b927c3cde063e354ca7630d85f1597d3bf5'],
+  'mcp-headers.mjs': ['a043ea14ad3f1cfa3e4ccae8ccc28f2fec8b7d15ae9b878fdc3ec98203657751'],
+  'channel-bridge.mjs': [
+    '7974ad5893df1bf55d94715d921e3b61834bf2dedbb644cf83d4123c159706d5',
+    '297702a654f7deba15584566ae770885bf915eb8803a495588187949fb8a5048',
+  ],
+};
 const args = process.argv.slice(2);
 
 // `harvest-hosted claude ...` is a launcher, not an install: it starts Claude Code in this
@@ -23,15 +34,16 @@ if (args[0] === 'claude') {
 } else {
 
 if (args.includes('--help') || args.includes('-h')) {
-  console.log('Usage: node scripts/install.mjs --runtime <codex|claude-code>');
+  console.log('Usage: node scripts/install.mjs --runtime <codex|claude-code> [--upgrade]');
   console.log('       harvest-hosted claude [claude arguments]');
   process.exit(0);
 }
 
 const runtimeIndex = args.indexOf('--runtime');
 const runtime = runtimeIndex >= 0 ? args[runtimeIndex + 1] : '';
-if (!runtime || args.length !== 2 || runtimeIndex !== 0) {
-  fail('expected exactly --runtime <codex|claude-code>');
+const upgrade = args[2] === '--upgrade';
+if (!runtime || args.length !== (upgrade ? 3 : 2) || runtimeIndex !== 0) {
+  fail('expected --runtime <codex|claude-code> [--upgrade]');
 }
 
 const targetDirectories = {
@@ -49,16 +61,12 @@ const targetPath = resolve(targetDirectory, 'SKILL.md');
 const registrationTargetPath = resolve(targetDirectory, 'register.mjs');
 const mcpHeadersTargetPath = resolve(targetDirectory, 'mcp-headers.mjs');
 const bridgeTargetPath = resolve(targetDirectory, 'channel-bridge.mjs');
-assertCompatible(targetPath, source);
-assertCompatible(registrationTargetPath, registrationSource);
-assertCompatible(mcpHeadersTargetPath, mcpHeadersSource);
-assertCompatible(bridgeTargetPath, bridgeSource);
-
-mkdirSync(targetDirectory, { recursive: true, mode: 0o700 });
-writeIfMissing(targetPath, source);
-writeIfMissing(registrationTargetPath, registrationSource);
-writeIfMissing(mcpHeadersTargetPath, mcpHeadersSource);
-writeIfMissing(bridgeTargetPath, bridgeSource);
+installFiles(targetDirectory, [
+  [targetPath, source],
+  [registrationTargetPath, registrationSource],
+  [mcpHeadersTargetPath, mcpHeadersSource],
+  [bridgeTargetPath, bridgeSource],
+], upgrade);
 if (runtime === 'claude-code') configureClaudeMcp(bridgeTargetPath);
 if (runtime === 'codex') configureCodexMcp(bridgeTargetPath);
 console.log(`Harvest skill installed for ${runtime}: ${targetPath}`);
@@ -165,12 +173,32 @@ function runRuntimeCli(name, commandArgs) {
   }
 }
 
-function assertCompatible(path, expected) {
-  if (existsSync(path) && readFileSync(path, 'utf8') !== expected) fail(`existing skill file differs: ${path}`);
-}
-
-function writeIfMissing(path, content) {
-  if (!existsSync(path)) writeFileSync(path, content, { encoding: 'utf8', flag: 'wx' });
+function installFiles(directory, files, upgrade) {
+  const existing = files.map(([path, content]) => {
+    if (!existsSync(path)) return null;
+    if (!lstatSync(path).isFile()) fail(`existing skill file is not a regular file: ${path}`);
+    const bytes = readFileSync(path);
+    if (bytes.equals(Buffer.from(content))) return bytes;
+    if (!upgrade || !KNOWN_INSTALLED_SHA256[path.split(/[\\/]/).pop()]?.includes(createHash('sha256').update(bytes).digest('hex'))) {
+      fail(`existing skill file differs: ${path}`);
+    }
+    return bytes;
+  });
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  if (upgrade && existing.some((bytes, index) => bytes && !bytes.equals(Buffer.from(files[index][1])))) {
+    const backup = mkdtempSync(resolve(directory, '..', '.harvest-backup-'));
+    for (let index = 0; index < files.length; index += 1) {
+      if (existing[index]) copyFileSync(files[index][0], resolve(backup, files[index][0].split(/[\\/]/).pop()));
+    }
+    console.log(`Harvest skill backup: ${backup}`);
+  }
+  for (let index = 0; index < files.length; index += 1) {
+    const [path, content] = files[index];
+    if (existing[index]?.equals(Buffer.from(content))) continue;
+    const temporary = `${path}.${process.pid}.tmp`;
+    writeFileSync(temporary, content, { encoding: 'utf8', flag: 'wx' });
+    renameSync(temporary, path);
+  }
 }
 
 function fail(message) {
