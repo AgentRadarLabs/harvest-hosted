@@ -15,12 +15,15 @@ Create the credential first:
 Install the pinned tarball served by Harvest for your runtime:
 
 ```sh
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.6.tgz --runtime codex
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.6.tgz --runtime claude-code
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.7.tgz --runtime codex
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.7.tgz --runtime claude-code
 ```
 
 Run only the command for your runtime. The installer writes the skill and MCP
 bridge. It does not create an account, access a mailbox, or issue a credential.
+If upgrading an unmodified 0.2.5 or 0.2.6 installation, append `--upgrade`.
+The installer checks published-file hashes, backs up the old skill, and refuses
+unknown or edited files. Restart your runtime to load the new bridge.
 
 ## Developer API
 
@@ -67,9 +70,9 @@ Codex and Claude Code. The bridge reads the privately saved credential at
 runtime, so it never appears in runtime configuration or CLI arguments; it forwards channel
 events and adds local-only participant-page tools while all meeting policy
 remains on the hosted MCP server. Restart the selected runtime once after
-installation so the new tools load. The installer never prints API keys. If an installed
-file differs, installation stops; remove or back up an old installation
-yourself before replacing it.
+installation so the new tools load. The installer never prints API keys. Without
+`--upgrade`, a differing installed file stops installation; with it, only known
+published files are backed up and replaced. Edited files still stop installation.
 
 **In Claude Code, start it this way. This is the connection, not an
 enhancement:**
@@ -94,7 +97,7 @@ harvest-hosted claude --model opus -p "join the meeting and take notes"
 Pinned, without installing anything:
 
 ```sh
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.6.tgz claude
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.7.tgz claude
 ```
 
 It puts no credential on the command line — authorization stays in the MCP
