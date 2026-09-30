@@ -30982,7 +30982,7 @@ async function rejectMissingCredential() {
   transport.onerror = () => process.exit(1);
   transport.onmessage = async (request) => {
     if (!Object.hasOwn(request, "id") || !request.method) return;
-    await transport.send({ jsonrpc: "2.0", id: request.id, error: { code: -32001, message } });
+    await transport.send({ jsonrpc: "2.0", id: request.id, error: { code: ErrorCode.InternalError, message } });
     clearTimeout(deadline);
     await transport.close();
     process.exit(1);

@@ -4,7 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
@@ -245,7 +245,7 @@ async function rejectMissingCredential() {
   transport.onerror = () => process.exit(1);
   transport.onmessage = async (request) => {
     if (!Object.hasOwn(request, 'id') || !request.method) return;
-    await transport.send({ jsonrpc: '2.0', id: request.id, error: { code: -32001, message } });
+    await transport.send({ jsonrpc: '2.0', id: request.id, error: { code: ErrorCode.InternalError, message } });
     clearTimeout(deadline);
     await transport.close();
     process.exit(1);

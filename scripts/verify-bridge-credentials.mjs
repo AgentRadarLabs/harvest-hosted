@@ -32,7 +32,7 @@ async function run(file, overrides, initialize) {
   assert.ok(!`${stdout}${stderr}`.includes(sentinel));
   if (initialize) {
     const message = JSON.parse(stdout.trim());
-    assert.equal(message.id, 17); assert.equal(message.error.code, -32001);
+    assert.equal(message.id, 17); assert.equal(message.error.code, -32603);
     assert.match(message.error.message, /HARVEST_TOKEN in the environment/);
     assert.ok(!('result' in message));
   } else assert.equal(stdout, '');
