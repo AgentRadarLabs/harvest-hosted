@@ -37,9 +37,9 @@ meeting connection only.
 import { HarvestApi } from 'harvest-hosted/api';
 
 const api = new HarvestApi({ apiKey: process.env.HARVEST_DEV_KEY });
-const { voices, identities, backdrops } = await api.catalog({ locale: 'ru-RU', tag: 'chirp3-hd' });
-const voice = voices.find((item) => item.provider === 'google');
-if (!voice) throw new Error('No approved Google voice available');
+const { voices, identities, backdrops } = await api.catalog();
+const voice = voices[0];
+if (!voice) throw new Error('No voice available in the current catalog');
 const requestKey = crypto.randomUUID(); // Persist this key before sending; reuse it on retry.
 const { agent, credential } = await api.createAgent({
   display_name: 'Researcher',
@@ -63,8 +63,8 @@ The API also exposes `agents()`, `agent(id)`, `issueAgentToken(id)`, and
 `revokeAgentToken(id, credentialId)`. Rotating the developer key invalidates its
 previous value immediately. The pinned hosted installer and npm package are
 versioned separately; publishing 0.3.0 does not change the hosted URL.
-Creating an agent with a developer key requires an explicit approved Google
-`voice_preset` from the current catalog. Legacy Edge voice IDs are not selectable.
+Creating an agent with a developer key requires an explicit `voice_preset` from
+the current catalog. The server decides which voice IDs are available.
 
 Reuse the same `idempotencyKey` when retrying a timed-out create request. The
 first request can still succeed; a repeated key then returns 409 and never
