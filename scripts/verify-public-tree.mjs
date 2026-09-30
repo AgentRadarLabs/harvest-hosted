@@ -92,7 +92,7 @@ if (!skill.includes('replay_meeting_events') || !skill.includes('latest_event_id
   failures.push('SKILL must explain bounded event replay after an agent reconnect');
 }
 if (!license.includes('All rights reserved.')) failures.push('proprietary license marker missing');
-if (packageJson.name !== 'harvest-hosted' || packageJson.version !== '0.2.7') {
+if (packageJson.name !== 'harvest-hosted' || packageJson.version !== '0.2.8') {
   failures.push('npm identity mismatch');
 }
 if (packageJson.license !== 'UNLICENSED') failures.push('npm package must remain proprietary');

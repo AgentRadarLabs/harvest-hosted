@@ -14,7 +14,7 @@ import { openParticipantPageTunnel } from './participant-page-tunnel.mjs';
 const options = parseOptions(process.argv.slice(2));
 const token = await readToken(options.tokenEnv);
 const local = new Server(
-  { name: 'harvest-hosted', version: '0.2.7' },
+  { name: 'harvest-hosted', version: '0.2.8' },
   {
     capabilities: {
       experimental: { 'claude/channel': {} },
@@ -83,7 +83,7 @@ local.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function connectRemote() {
-  const client = new Client({ name: 'harvest-hosted-bridge', version: '0.2.7' });
+  const client = new Client({ name: 'harvest-hosted-bridge', version: '0.2.8' });
   const transport = new StreamableHTTPClientTransport(new URL(options.url), {
     requestInit: { headers: { Authorization: `Bearer ${token}` } },
   });
