@@ -29,6 +29,9 @@ assert.equal(calls[4].headers.Authorization, 'Bearer hvst_dev_test');
 await api.createAgent({ display_name: 'Sam', identity_id: 'sam', voice_preset: 'ru-RU-Chirp3-HD-Kore' }, { idempotencyKey: 'request-1' });
 assert.equal(calls[5].headers['Idempotency-Key'], 'request-1');
 assert.deepEqual(JSON.parse(calls[5].body), { display_name: 'Sam', identity_id: 'sam', voice_preset: 'ru-RU-Chirp3-HD-Kore' });
+await assert.rejects(api.createAgent({ display_name: 'Sam', identity_id: 'sam' }), /voice_preset from the current voice catalog is required/);
+await assert.rejects(api.createAgent({ display_name: 'Sam', identity_id: 'sam', voice_preset: '  ' }), /voice_preset from the current voice catalog is required/);
+assert.equal(calls.length, 6);
 assert.throws(() => new HarvestApi({ apiKey: ['hvst', 'live', 'wrong_scope'].join('_') }), /developer API key required/);
 
 const unauthorized = new HarvestApi({

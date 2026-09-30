@@ -42,7 +42,10 @@ export class HarvestApi {
   async avatars() { return (await this.catalog()).identities; }
   agents() { return this.request('/api/agents'); }
   agent(id) { return this.request(`/api/agents/${encodeURIComponent(id)}`); }
-  createAgent(config, { idempotencyKey } = {}) {
+  async createAgent(config, { idempotencyKey } = {}) {
+    if (typeof config?.voice_preset !== 'string' || !config.voice_preset.trim()) {
+      throw new TypeError('voice_preset from the current voice catalog is required');
+    }
     return this.request('/api/agents', 'POST', config,
       idempotencyKey === undefined ? {} : { 'Idempotency-Key': idempotencyKey });
   }
