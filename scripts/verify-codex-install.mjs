@@ -7,19 +7,22 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 
-const root = resolve(import.meta.dirname, '..');
+const root = resolve(process.env.HARVEST_UPGRADE_TO || resolve(import.meta.dirname, '..'));
 const tempHome = mkdtempSync(join(tmpdir(), 'harvest-codex-install-'));
 const codexHome = join(tempHome, 'codex-home');
 const binDirectory = join(tempHome, 'bin');
 const capturePath = join(tempHome, 'codex-mcp-calls.jsonl');
 const statePath = join(tempHome, 'codex-mcp-state.json');
 const token = `hvst_live_${'c'.repeat(43)}`;
+// An unpacked, verified prior release enables the actual customer upgrade check.
+const previousRoot = process.env.HARVEST_UPGRADE_FROM;
 
 try {
   mkdirSync(binDirectory, { recursive: true });
@@ -35,8 +38,11 @@ try {
     PATH: `${binDirectory}${delimiter}${process.env.PATH || ''}`,
   };
 
+  install(env, [], previousRoot || root);
+  const initialConfig = readFileSync(statePath);
+  if (previousRoot) install(env, ['--upgrade']);
   install(env);
-  install(env);
+  if (!readFileSync(statePath).equals(initialConfig)) throw new Error('upgrade changed MCP configuration ownership');
 
   const target = join(codexHome, 'skills', 'harvest');
   const bridgePath = join(target, 'channel-bridge.mjs');
@@ -44,8 +50,12 @@ try {
     if (!existsSync(join(target, file))) throw new Error(`missing installed file: ${file}`);
   }
 
+  if (!readFileSync(bridgePath).equals(readFileSync(join(root, 'scripts', 'channel-bridge.bundle.mjs')))) {
+    throw new Error('installed bridge differs from the current release');
+  }
+
   const calls = readFileSync(capturePath, 'utf8').trim().split(/\r?\n/).map(JSON.parse);
-  if (calls.length !== 3) throw new Error(`expected get/add/get calls, got ${calls.length}`);
+  if (calls.length !== (previousRoot ? 4 : 3)) throw new Error(`unexpected install/upgrade call count: ${calls.length}`);
   if (JSON.stringify(calls).includes(token)) throw new Error('token leaked into Codex CLI arguments');
   if (JSON.stringify(calls[0]) !== JSON.stringify(['mcp', 'get', 'harvest-hosted', '--json'])) {
     throw new Error(`unexpected first Codex call: ${JSON.stringify(calls[0])}`);
@@ -67,7 +77,28 @@ try {
     throw new Error('Codex Harvest MCP server is not enabled stdio');
   }
 
+  if (previousRoot) {
+    const backups = readdirSync(join(codexHome, 'skills')).filter((name) => name.startsWith('.harvest-backup-'));
+    if (backups.length !== 1) throw new Error('upgrade must retain exactly one prior release backup');
+    for (const [file, source] of [
+      ['SKILL.md', 'skills/harvest/SKILL.md'], ['register.mjs', 'scripts/register.mjs'],
+      ['mcp-headers.mjs', 'scripts/mcp-headers.mjs'], ['channel-bridge.mjs', 'scripts/channel-bridge.bundle.mjs'],
+    ]) {
+      if (!readFileSync(join(codexHome, 'skills', backups[0], file)).equals(readFileSync(join(previousRoot, source)))) {
+        throw new Error(`prior release backup mismatch: ${file}`);
+      }
+    }
+  }
   install(env, ['--upgrade']);
+  const cleanBridge = readFileSync(bridgePath);
+  const editedBridge = Buffer.concat([cleanBridge, Buffer.from('\nlocal bridge edit\n')]);
+  writeFileSync(bridgePath, editedBridge);
+  let refusedBridge = false;
+  try { install(env, ['--upgrade']); } catch { refusedBridge = true; }
+  if (!refusedBridge || !readFileSync(bridgePath).equals(editedBridge) || !readFileSync(statePath).equals(initialConfig)) {
+    throw new Error('upgrade overwrote an unknown bridge or its MCP configuration');
+  }
+  writeFileSync(bridgePath, cleanBridge);
   const editedSkill = `${readFileSync(join(target, 'SKILL.md'), 'utf8')}\nlocal edit\n`;
   writeFileSync(join(target, 'SKILL.md'), editedSkill);
   let refused = false;
@@ -76,13 +107,14 @@ try {
     throw new Error('upgrade overwrote a user-modified skill');
   }
 
+  if (previousRoot) console.log('PASS published_upgrade=green prior_files_backup=exact mcp_config=unchanged unknown_bridge=refused');
   console.log('PASS codex_skill_install=green mcp_auto_config=green idempotent=green cli_secret_leaks=0');
 } finally {
   rmSync(tempHome, { recursive: true, force: true });
 }
 
-function install(env, extra = []) {
-  execFileSync(process.execPath, [join(root, 'scripts', 'install.mjs'), '--runtime', 'codex', ...extra], {
+function install(env, extra = [], installRoot = root) {
+  execFileSync(process.execPath, [join(installRoot, 'scripts', 'install.mjs'), '--runtime', 'codex', ...extra], {
     cwd: root,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
