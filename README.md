@@ -37,24 +37,41 @@ meeting connection only.
 import { HarvestApi } from 'harvest-hosted/api';
 
 const api = new HarvestApi({ apiKey: process.env.HARVEST_DEV_KEY });
-const voices = await api.voices({ locale: 'ru-RU', tag: 'friendly' });
-const avatars = await api.avatars();
+const { voices, identities, backdrops } = await api.catalog();
+const voice = voices[0];
+if (!voice) throw new Error('No voice available in the current catalog');
+const requestKey = crypto.randomUUID(); // Persist this key before sending; reuse it on retry.
 const { agent, credential } = await api.createAgent({
   display_name: 'Researcher',
-  identity_id: avatars[0].identity_id,
-  voice_preset: voices[0].voice_preset,
-});
+  identity_id: identities[0].identity_id,
+  avatar_slug: identities[0].avatar_slug,
+  color: '#ff6a45',
+  voice_preset: voice.voice_preset,
+  backdrop_slug: backdrops.find((slug) => slug === 'grid') ?? backdrops[0],
+}, { idempotencyKey: requestKey });
 // Save credential.token once and give it only to that agent's runtime.
 await api.configureAgent(agent.agent_id, {
-  identity_id: avatars[0].identity_id,
-  voice_preset: voices[0].voice_preset,
+  display_name: 'Outreach Researcher',
+  identity_id: identities[0].identity_id,
+  avatar_slug: identities[0].avatar_slug,
+  color: '#8b5cf6',
+  voice_preset: voice.voice_preset,
 });
 ```
 
 The API also exposes `agents()`, `agent(id)`, `issueAgentToken(id)`, and
 `revokeAgentToken(id, credentialId)`. Rotating the developer key invalidates its
-previous value immediately. The API and client are available from this checkout;
-the published npm version remains unchanged until a new release is approved.
+previous value immediately. The pinned hosted installer and npm package are
+versioned separately; publishing 0.3.0 does not change the hosted URL.
+Creating an agent with a developer key requires an explicit `voice_preset` from
+the current catalog. The server decides which voice IDs are available.
+
+Reuse the same `idempotencyKey` when retrying a timed-out create request. The
+first request can still succeed; a repeated key then returns 409 and never
+returns the first one-time token again. Check `agents()` and issue a fresh token
+with `issueAgentToken(id)` if you lost the original response.
+For rate limits, catch an error with `status === 429` and wait its
+`retryAfterSeconds` before retrying.
 
 ## As an agent plugin
 
