@@ -11,6 +11,11 @@ import { z } from 'zod';
 const streams = new Map();
 const received = [];
 let initialized = 0;
+let expireSession = false;
+let releaseHeld;
+const actions = [];
+const sent = [];
+const toolResult = (value) => ({ content: [{ type: 'text', text: JSON.stringify(value) }] });
 const server = createServer(async (req, res) => {
   const session = req.headers['mcp-session-id'];
   if (req.method === 'GET') {
@@ -33,12 +38,23 @@ const server = createServer(async (req, res) => {
   } else if (message.method === 'notifications/initialized') {
     res.writeHead(202).end();
   } else if (message.method === 'tools/list') {
-    reply({ tools: [{ name: 'echo', inputSchema: { type: 'object' } }] });
-  } else if (message.method === 'tools/call' && session === 'session-1') {
+    reply({ tools: ['echo', 'hold', 'speak', 'replay'].map((name) => ({ name, inputSchema: { type: 'object' } })) });
+  } else if (message.method === 'tools/call' && expireSession && session === 'session-1') {
     res.writeHead(404).end(JSON.stringify({ jsonrpc: '2.0', id: null,
       error: { code: -32001, message: 'Session not found' } }));
   } else if (message.method === 'tools/call') {
-    reply({ content: [{ type: 'text', text: 'reconnected' }] });
+    const { name, arguments: args = {} } = message.params;
+    actions.push({ name, arguments: args, session, at: Date.now() });
+    if (name === 'hold') {
+      await new Promise((done) => { releaseHeld = done; });
+      reply(toolResult({ status: 'completed', marker: args.marker }));
+    } else if (name === 'speak') {
+      const say_id = `fixture-say-${actions.filter((action) => action.name === 'speak').length}`;
+      reply(toolResult({ status: 'completed', say_id }));
+    } else if (name === 'replay') {
+      const events = sent.filter((event) => Number(event.meta.cursor) > args.after_cursor);
+      reply(toolResult({ events, next_cursor: Number(events.at(-1)?.meta.cursor ?? args.after_cursor) }));
+    } else reply({ content: [{ type: 'text', text: 'reconnected' }] });
   } else res.writeHead(400).end();
 });
 
@@ -50,7 +66,8 @@ async function until(check) {
   }
 }
 
-function emit(session, params) {
+function emit(session, params, remember = true) {
+  if (remember) sent.push(params);
   streams.get(session).write(`event: message\ndata: ${JSON.stringify({
     jsonrpc: '2.0', method: 'notifications/claude/channel', params,
   })}\n\n`);
@@ -78,15 +95,57 @@ try {
   for (const event of events) emit('session-1', event);
   await until(() => received.length === events.length);
   assert.deepEqual(received, events, 'bridge must preserve event order, content and correlation metadata');
+  // A held upstream tool models backpressure, NOT Claude reasoning or an approval dialog.
+  const duringHold = ['speaker_changed', 'utterance_partial', 'utterance_final', 'chat_message']
+    .map((event, index) => ({ content: `held-${index}`, meta: { event,
+      session_id: 'fixture-body', cursor: String(index + 6), speaker: 'Anton', is_self: 'false' } }));
+  let heldSettled = false;
+  const held = client.callTool({ name: 'hold', arguments: { marker: 'busy-permission-seam' } })
+    .then((result) => { heldSettled = true; return result; });
+  await until(() => typeof releaseHeld === 'function');
+  for (const event of duringHold) emit('session-1', event);
+  await until(() => received.length === 9);
+  assert.equal(heldSettled, false, 'notifications must arrive while upstream tool is still held');
+  assert.deepEqual(received.slice(5), duringHold);
+  releaseHeld();
+  assert.equal(JSON.parse((await held).content[0].text).marker, 'busy-permission-seam');
+
+  const say = JSON.parse((await client.callTool({ name: 'speak', arguments: { text: 'one controlled reply' } })).content[0].text);
+  assert.equal(say.status, 'completed');
+  const terminal = { content: 'mock playback complete', meta: { event: 'speech_terminal',
+    session_id: 'fixture-body', cursor: '10', say_id: say.say_id, state: 'completed' } };
+  emit('session-1', terminal);
+  await until(() => received.length === 10);
+  assert.deepEqual(received[9], terminal);
+
+  expireSession = true;
   assert.equal((await client.callTool({ name: 'echo', arguments: {} })).content[0].text, 'reconnected');
   assert.equal(initialized, 2);
   await until(() => streams.has('session-2'));
-  const afterReconnect = { content: 'Fresh final', meta: { event: 'utterance_final', cursor: '6' } };
+  const replay = JSON.parse((await client.callTool({ name: 'replay', arguments: { after_cursor: 8 } })).content[0].text);
+  assert.deepEqual(replay.events, [duringHold[3], terminal]);
+  assert.equal(replay.next_cursor, 10);
+  // Bridge is intentionally transparent: duplicate replay reaches the consumer unchanged.
+  // Deduplicating reply decisions belongs to original Claude/gateway acceptance, not this fixture.
+  for (const event of replay.events) emit('session-2', event, false);
+  const afterReconnect = { content: 'Fresh final', meta: { event: 'utterance_final', cursor: '11' } };
   emit('session-2', afterReconnect);
-  await until(() => received.length === 6);
-  assert.deepEqual(received[5], afterReconnect);
-  console.log('PASS channel_transport=green events=6 metadata_order=preserved reconnect_delivery=green model_invocations=0');
+  const self = { content: 'own mock reply', meta: { event: 'utterance_final', cursor: '12', is_self: 'true' } };
+  emit('session-2', self);
+  await until(() => received.length === 14);
+  assert.deepEqual(received.slice(10), [...replay.events, afterReconnect, self]);
+  const empty = JSON.parse((await client.callTool({ name: 'replay', arguments: { after_cursor: 12 } })).content[0].text);
+  assert.deepEqual(empty, { events: [], next_cursor: 12 });
+  assert.equal(actions.filter((action) => action.name === 'speak').length, 1);
+  assert.ok(actions.find((action) => action.name === 'speak').at >= actions[0].at);
+  console.log(JSON.stringify({ status: 'PASS', events: received.length, initialized,
+    metadata_order: 'preserved', held_tool_delivery: 'green', cursor_replay: 'green',
+    generated_say_id: say.say_id, controlled_speak_calls: 1,
+    duplicate_passthrough: 'verified', self_passthrough: 'verified', model_invocations: 0,
+    unverified: ['Claude busy queue', 'permission dialog/resume', 'model reply dedup', 'audible playback'],
+    actions, received }));
 } finally {
+  releaseHeld?.();
   await client?.close().catch(() => undefined);
   for (const stream of streams.values()) stream.end();
   server.closeAllConnections();
