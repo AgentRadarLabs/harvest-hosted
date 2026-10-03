@@ -32,6 +32,8 @@ The public MCP endpoint is `https://tryharvest.ai/mcp`. A custom partner client 
 
 Have the host create a meeting that admits the intended agent identity, ideally an OPEN meeting for the first integration test. An OPEN setting reduces lobby friction; it does not bypass Google's admission or bot policy. Obtain explicit authority for that meeting and use its real URL.
 
+Inspect the returned payload status/reason, not only the MCP wrapper: `isError:false` can accompany `status:rejected`. A tool invocation or transport success does not prove the meeting action succeeded.
+
 These are MCP tool arguments, not standalone REST endpoints:
 
 ```json
@@ -102,7 +104,9 @@ const { agent, credential } = await api.createAgent(config);
 // Save the one-time response privately; deliver its token only to this agent.
 await writeFile(`./harvest-credential-${randomUUID()}.json`,
   JSON.stringify(credential), { mode: 0o600, flag: 'wx' });
-await api.configureAgent(agent.agent_id, { display_name: 'AgentRadar Outreach' });
+await api.configureAgent(agent.agent_id, {
+  ...config, display_name: 'AgentRadar Outreach',
+});
 await api.agent(agent.agent_id); // Read back the owned agent using its account key.
 console.log({ agent_id: agent.agent_id });
 ```
@@ -129,9 +133,10 @@ printf 'header = "Authorization: Bearer %s"\n' "$HARVEST_DEV_KEY" |
   https://tryharvest.ai/api/agents > create-response.private.json
 # Persist this private response before any retry; never print it.
 agent_id=$(jq -er '.agent.agent_id' create-response.private.json)
+jq '.display_name="AgentRadar Outreach"' agent-config.json > updated-agent-config.json
 printf 'header = "Authorization: Bearer %s"\n' "$HARVEST_DEV_KEY" |
   curl --fail-with-body --silent --show-error --config - -X PATCH \
-  -H 'Content-Type: application/json' --data '{"display_name":"AgentRadar Outreach"}' \
+  -H 'Content-Type: application/json' --data-binary @updated-agent-config.json \
   "https://tryharvest.ai/api/agents/$agent_id/identity" > configured-agent.json
 ```
 
