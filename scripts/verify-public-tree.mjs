@@ -22,7 +22,7 @@ const allowedTopLevel = new Set([
   // Transcripts a reviewer reads instead of rerunning. Repository-only: the published tarball is
   // an explicit file list, and the packed-contents assertion below fails if anything from here
   // ever reaches npm.
-  'evidence',
+  'evidence', 'docs',
   'node_modules', 'package-lock.json', 'package.json',
 ]);
 const secretPatterns = [

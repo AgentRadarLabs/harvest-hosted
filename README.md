@@ -4,6 +4,8 @@ This is the official first-party distribution repository for Harvest AI at
 https://tryharvest.ai. Install the Harvest skill so your existing agent can join
 and participate in a Google Meet that you are authorized to access.
 
+For product integrations, follow the [partner quickstart](docs/partner-quickstart.md): install, join, hear/speak, account API and capacity contracts.
+
 ## Primary setup
 
 Create the credential first:
