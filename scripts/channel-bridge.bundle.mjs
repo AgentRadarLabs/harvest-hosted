@@ -30762,7 +30762,7 @@ function validateRegistration(value) {
 
 // scripts/channel-bridge.mjs
 var options = parseOptions(process.argv.slice(2));
-var token = readToken(options.tokenEnv);
+var token = await readToken(options.tokenEnv);
 var local = new Server(
   { name: "harvest-hosted", version: "0.3.0" },
   {
@@ -30965,12 +30965,31 @@ function parseOptions(values) {
   if (!/^[A-Z_][A-Z0-9_]*$/.test(parsed.tokenEnv)) fail("token env name is invalid");
   return parsed;
 }
-function readToken(tokenEnv) {
+async function readToken(tokenEnv) {
   const configured = process.env[tokenEnv] || readSavedToken();
   if (!/^hvst_live_[A-Za-z0-9_-]{43}$/.test(configured || "")) {
-    fail("no valid Harvest credential; complete registration first");
+    await rejectMissingCredential();
   }
   return configured;
+}
+async function rejectMissingCredential() {
+  const message = "No valid Harvest credential. Create an agent at https://tryharvest.ai/agents, then run node <Harvest skill directory>/register.mjs import-env with HARVEST_TOKEN in the environment.";
+  process.stderr.write(`harvest-hosted bridge: ${message}
+`);
+  const transport = new StdioServerTransport();
+  const deadline = setTimeout(() => process.exit(1), 5e3);
+  process.stdin.once("end", () => process.exit(1));
+  transport.onerror = () => process.exit(1);
+  transport.onmessage = async (request) => {
+    if (!Object.hasOwn(request, "id") || !request.method) return;
+    await transport.send({ jsonrpc: "2.0", id: request.id, error: { code: ErrorCode.InternalError, message } });
+    clearTimeout(deadline);
+    await transport.close();
+    process.exit(1);
+  };
+  await transport.start();
+  await new Promise(() => {
+  });
 }
 function readSavedToken() {
   const path = process.env.HARVEST_CONFIG_PATH || resolve(homedir(), ".harvest-hosted", "config.json");
