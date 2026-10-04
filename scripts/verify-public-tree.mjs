@@ -53,7 +53,8 @@ const license = readFileSync(resolve(root, 'LICENSE'), 'utf8');
 const registrationHelper = readFileSync(resolve(root, 'scripts', 'register.mjs'), 'utf8');
 const mcpHeadersHelper = readFileSync(resolve(root, 'scripts', 'mcp-headers.mjs'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
-const pinnedInstall = `npx --yes https://tryharvest.ai/client-harvest-hosted-${packageJson.version}.tgz --runtime claude-code`;
+// The hosted installer tarball is released separately from the npm package.
+const pinnedInstall = 'npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.8.tgz --runtime claude-code';
 if (!readme.includes(pinnedInstall)) failures.push('README canonical pinned hosted install missing');
 if (/git clone\s+--depth\s+1\s+https:\/\/github\.com\/AgentRadarLabs\/harvest-hosted\.git/i.test(readme)) {
   failures.push('README still promotes clone-first installation');
@@ -92,7 +93,7 @@ if (!skill.includes('replay_meeting_events') || !skill.includes('latest_event_id
   failures.push('SKILL must explain bounded event replay after an agent reconnect');
 }
 if (!license.includes('All rights reserved.')) failures.push('proprietary license marker missing');
-if (packageJson.name !== 'harvest-hosted' || packageJson.version !== '0.2.8') {
+if (packageJson.name !== 'harvest-hosted' || packageJson.version !== '0.3.0') {
   failures.push('npm identity mismatch');
 }
 if (packageJson.license !== 'UNLICENSED') failures.push('npm package must remain proprietary');
