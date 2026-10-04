@@ -1,0 +1,15 @@
+{
+  "name": "harvest",
+  "version": "0.3.0",
+  "description": "Join a Google Meet you are authorized to attend: hear the room, speak, use meeting chat, and see participants and the shared screen.",
+  "mcpServers": {
+    "harvest-hosted": {
+      "command": "node",
+      "args": [
+        "${extensionPath}/scripts/channel-bridge.bundle.mjs",
+        "--url",
+        "https://tryharvest.ai/mcp"
+      ]
+    }
+  }
+}

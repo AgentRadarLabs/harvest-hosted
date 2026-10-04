@@ -35,7 +35,7 @@ if (args[0] === 'claude') {
 } else {
 
 if (args.includes('--help') || args.includes('-h')) {
-  console.log('Usage: node scripts/install.mjs --runtime <codex|claude-code> [--upgrade]');
+  console.log('Usage: node scripts/install.mjs --runtime <codex|claude-code|cursor|gemini|windsurf|copilot|junie|openclaw> [--upgrade]');
   console.log('       harvest-hosted claude [claude arguments]');
   process.exit(0);
 }
@@ -44,15 +44,21 @@ const runtimeIndex = args.indexOf('--runtime');
 const runtime = runtimeIndex >= 0 ? args[runtimeIndex + 1] : '';
 const upgrade = args[2] === '--upgrade';
 if (!runtime || args.length !== (upgrade ? 3 : 2) || runtimeIndex !== 0) {
-  fail('expected --runtime <codex|claude-code> [--upgrade]');
+  fail('expected --runtime <codex|claude-code|cursor|gemini|windsurf|copilot|junie|openclaw> [--upgrade]');
 }
 
 const targetDirectories = {
   codex: resolve(process.env.CODEX_HOME || resolve(homedir(), '.codex'), 'skills', 'harvest'),
   'claude-code': resolve(process.env.CLAUDE_CONFIG_DIR || resolve(homedir(), '.claude'), 'skills', 'harvest'),
+  cursor: resolve(homedir(), '.cursor', 'skills', 'harvest'),
+  gemini: resolve(homedir(), '.gemini', 'skills', 'harvest'),
+  windsurf: resolve(process.env.XDG_CONFIG_HOME || resolve(homedir(), '.config'), 'devin', 'skills', 'harvest'),
+  copilot: resolve(process.env.COPILOT_HOME || resolve(homedir(), '.copilot'), 'skills', 'harvest'),
+  junie: resolve(homedir(), '.junie', 'skills', 'harvest'),
+  openclaw: resolve(process.env.OPENCLAW_STATE_DIR || resolve(homedir(), '.openclaw'), 'skills', 'harvest'),
 };
 const targetDirectory = targetDirectories[runtime];
-if (!targetDirectory) fail('runtime must be codex or claude-code');
+if (!targetDirectory) fail(`unsupported runtime: ${runtime}`);
 
 const source = readFileSync(sourcePath, 'utf8');
 const registrationSource = readFileSync(registrationSourcePath, 'utf8');
@@ -70,6 +76,18 @@ installFiles(targetDirectory, [
 ], upgrade);
 if (runtime === 'claude-code') configureClaudeMcp(bridgeTargetPath);
 if (runtime === 'codex') configureCodexMcp(bridgeTargetPath);
+const jsonConfigPaths = {
+  cursor: resolve(homedir(), '.cursor', 'mcp.json'),
+  gemini: resolve(homedir(), '.gemini', 'settings.json'),
+  windsurf: resolve(process.env.XDG_CONFIG_HOME || resolve(homedir(), '.config'), 'devin', 'mcp_config.json'),
+  copilot: resolve(process.env.COPILOT_HOME || resolve(homedir(), '.copilot'), 'mcp-config.json'),
+  junie: resolve(homedir(), '.junie', 'mcp', 'mcp.json'),
+};
+if (jsonConfigPaths[runtime]) configureJsonMcp(jsonConfigPaths[runtime], bridgeTargetPath, runtime);
+if (runtime === 'openclaw') {
+  // OpenClaw owns JSON5 config. Use its native registry instead of rewriting it as JSON.
+  console.log('Skill installed. Register MCP once with `openclaw mcp add` as shown in README; this installer does not modify OpenClaw JSON5.');
+}
 console.log(`Harvest skill installed for ${runtime}: ${targetPath}`);
 
 }
@@ -236,4 +254,41 @@ function mcpEntryMatches(existing, expected) {
   return Array.isArray(existing.args)
     && existing.args.length === expected.args.length
     && existing.args.every((value, index) => value === expected.args[index]);
+}
+
+/** Preserve unrelated client settings and refuse a competing Harvest server. */
+function configureJsonMcp(configPath, bridgePath, runtime) {
+  const expected = {
+    ...(runtime === 'copilot' ? { type: 'local' } : {}),
+    command: process.execPath,
+    args: [bridgePath, '--url', 'https://tryharvest.ai/mcp'],
+    ...(runtime === 'copilot' ? { tools: ['*'] } : {}),
+  };
+  let config = {};
+  const configuredFile = lstatSync(configPath, { throwIfNoEntry: false });
+  if (configuredFile) {
+    if (!configuredFile.isFile()) fail('MCP configuration is not a regular file');
+    try { config = JSON.parse(readFileSync(configPath, 'utf8')); }
+    catch { fail('MCP configuration is not valid JSON; fix it in the client before installing'); }
+  }
+  if (!config || typeof config !== 'object' || Array.isArray(config)) fail('MCP configuration must be an object');
+  if (config.mcpServers !== undefined && (!config.mcpServers || typeof config.mcpServers !== 'object' || Array.isArray(config.mcpServers))) {
+    fail('mcpServers must be an object');
+  }
+  const existing = config.mcpServers?.['harvest-hosted'];
+  if (existing !== undefined) {
+    if (!existing || typeof existing !== 'object' || Array.isArray(existing)
+        || Object.keys(existing).length !== Object.keys(expected).length
+        || Object.entries(expected).some(([key, value]) => JSON.stringify(existing[key]) !== JSON.stringify(value))) {
+      fail('existing MCP server differs: harvest-hosted; reconcile it in the client before installing');
+    }
+    console.log(`Harvest MCP already configured for ${runtime}; nothing to change.`);
+    return;
+  }
+  config.mcpServers = { ...config.mcpServers, 'harvest-hosted': expected };
+  mkdirSync(dirname(configPath), { recursive: true, mode: 0o700 });
+  const temporary = `${configPath}.${process.pid}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
+  renameSync(temporary, configPath);
+  console.log(`Harvest MCP configured for ${runtime}: ${configPath}`);
 }

@@ -139,13 +139,191 @@ in-process Harvest push path. Codex receives the same MCP tools through the
 automatically registered bridge but uses a bounded MCP reader while automatic
 wake of an already-open Codex task remains unverified.
 
+## Agent host installs (source preview)
+
+The six new installers and native manifests below are source changes, not part
+of the pinned 0.2.8 tarball above. After this source change is merged, obtain one
+authorized checkout:
+
+```sh
+git clone https://github.com/AgentRadarLabs/harvest-hosted.git
+cd harvest-hosted
+```
+
+For a draft PR, check out its reviewed commit instead of assuming main contains
+it. Use Node 18+ to run `node scripts/install.mjs --runtime HOST`. Do not
+pass these new runtime names to the older published tarball. The installer
+copies the same bridge and skill, preserves unrelated settings, and refuses a
+competing Harvest entry or edited installed file. Restart the host afterwards.
+
+All eight hosts use `https://tryharvest.ai/mcp` through the existing stdio
+bridge. The bridge reads `~/.harvest-hosted/config.json` at runtime, with
+`HARVEST_TOKEN` taking precedence. Import the owner-provided credential once:
+
+```sh
+node scripts/register.mjs import-env
+node scripts/register.mjs probe
+```
+
+The token stays in the private config. No manifest contains bearer headers or
+credentials. Verify the host lists Harvest tools before joining; an installation
+receipt alone does not prove that a client loaded them.
+
+| Host | Install | Meeting input |
+| --- | --- | --- |
+| Claude Code | Existing installer + `harvest-hosted claude` | Native Channels with documented launch scope |
+| Codex | Existing installer | Bounded `replay_meeting_events` |
+| Cursor | User MCP/skill or local plugin | Bounded `replay_meeting_events` |
+| Gemini CLI | User MCP/skill or extension | Bounded `replay_meeting_events` |
+| Windsurf / Devin Cascade | User MCP/skill | Bounded `replay_meeting_events` |
+| GitHub Copilot CLI | User MCP/skill | Bounded `replay_meeting_events` |
+| Junie CLI / IDE | User MCP/skill | Bounded `replay_meeting_events` |
+| OpenClaw | Skill + native MCP registry | Bounded `replay_meeting_events` |
+
+Only Claude has a verified in-process Channels wake path. Other clients must
+keep one bounded reader in flight as described in the skill, preserve its
+cursors, and handle gaps honestly. A notification or changed tool catalog is
+not a model-turn wake. Native same-Claude/Live delegation remains the existing
+Claude path; these installers do not create another body or voice bridge.
+
+### Claude Code
+
+```sh
+node scripts/install.mjs --runtime claude-code
+harvest-hosted claude
+```
+
+For a source checkout without a global binary, run
+`node scripts/install.mjs claude`. Alternatively, the repository now exposes
+a native marketplace:
+
+```text
+/plugin marketplace add AgentRadarLabs/harvest-hosted
+/plugin install harvest@harvest
+```
+
+Use one installation route per client to avoid duplicate MCP servers. The
+marketplace installs tools and the skill; plugin installation alone does not
+prove Channels scope. Use the existing user-scoped installer and launcher for
+the verified `server:harvest-hosted` Channels route.
+
+### Codex
+
+```sh
+node scripts/install.mjs --runtime codex
+codex mcp get harvest-hosted --json
+```
+
+Restart Codex and confirm the tools are available in the new task.
+
+### Cursor
+
+```sh
+node scripts/install.mjs --runtime cursor
+```
+
+This installs `~/.cursor/skills/harvest/` and preserves unrelated entries in
+`~/.cursor/mcp.json`. Reload Cursor and check Harvest in MCP settings.
+Alternatively, copy the complete authorized checkout into
+`~/.cursor/plugins/local/harvest/` and reload. Its native
+`.cursor-plugin/plugin.json` uses `${CURSOR_PLUGIN_ROOT}`. Do not symlink to a
+checkout outside the local plugins directory. Admin policy can block local
+plugins. Cursor's public marketplace requires open-source plugins; Harvest's
+proprietary license has not changed, so no marketplace approval is claimed.
+
+### Gemini CLI
+
+```sh
+node scripts/install.mjs --runtime gemini
+gemini mcp list
+```
+
+The user installer writes `~/.gemini/skills/harvest/` and merges the server into
+`~/.gemini/settings.json`. Alternatively, from an authorized checkout:
+
+```sh
+gemini extensions link .
+```
+
+For Git-based distribution after the source is merged:
+`gemini extensions install https://github.com/AgentRadarLabs/harvest-hosted`.
+The extension discovers the existing `skills/` folder and starts the same
+bridge using `${extensionPath}`. Choose either installer or extension, not both.
+
+### Windsurf / Devin Cascade
+
+```sh
+node scripts/install.mjs --runtime windsurf
+```
+
+Current official Windsurf documentation redirects to Devin: this installer
+uses `${XDG_CONFIG_HOME:-~/.config}/devin/skills/harvest/` and
+`devin/mcp_config.json`. In Cascade, open the MCP configuration from its menu
+and confirm this is the active file. Older Windsurf builds can use
+`~/.codeium/windsurf/`; those builds need their native UI to register the same
+installed bridge and skill location. Do not assume the renamed config is read
+by an older build. Cascade has a 100-tool limit and organization allowlists.
+
+### GitHub Copilot CLI
+
+```sh
+node scripts/install.mjs --runtime copilot
+copilot mcp get harvest-hosted --json
+```
+
+This installs the skill into `~/.copilot/skills/harvest/` and registers a local
+server in `~/.copilot/mcp-config.json` (`COPILOT_HOME` is respected). Select the
+Harvest skill in Copilot CLI; existing workspace MCP entries can override the
+user entry. This does not configure Copilot cloud agent or VS Code.
+
+### Junie
+
+```sh
+node scripts/install.mjs --runtime junie
+```
+
+This installs `~/.junie/skills/harvest/` and the same local server into
+`~/.junie/mcp/mcp.json`, shared by CLI and IDE. Use Junie's `/mcp` to confirm
+it is Active, and `/harvest` to invoke the skill. Keep Junie's own tool approval
+policy. A skills-only registry install would not register MCP or credentials.
+
+### OpenClaw
+
+```sh
+node scripts/install.mjs --runtime openclaw
+openclaw mcp add harvest-hosted --command node \
+  --arg "$HOME/.openclaw/skills/harvest/channel-bridge.mjs" \
+  --arg=--url --arg=https://tryharvest.ai/mcp
+openclaw mcp show harvest-hosted --json
+```
+
+The installer installs the skill and helpers only. Register MCP once with
+OpenClaw's native command so its JSON5 configuration and other servers are
+preserved; an existing server must be reconciled in OpenClaw before adding.
+If `OPENCLAW_STATE_DIR` is set, use that directory instead of `~/.openclaw`
+in the bridge argument. `openclaw skills install ./skills/harvest --global`
+is a skills-only alternative and does not install the bridge helpers or MCP.
+The MCP registry is for eligible OpenClaw-managed runtimes; ACP does not accept
+per-session MCP injection. Confirm tools in the intended runtime, not just the
+registry. No permission or approval-mode flags are changed.
+
+### Acceptance still required
+
+Offline fixture checks cover installer merging, collisions, private credentials,
+manifest path resolution, and actual MCP tool calls through an installed bridge
+to a local fake gateway. They do not prove host wake, authentication to Harvest,
+or audible Meet speech. Fresh Cursor and Gemini CLI must each join, speak with
+independent listener recording plus matching transcript, and leave by following
+this README. Public directory/gallery submissions remain separate and unrun.
+See [host documentation and provenance](docs/agent-host-installs.md).
+
 ## Requirements
 
 - Node.js 18 or newer
 - A Harvest API token intentionally supplied in `HARVEST_TOKEN`, or a
   previously saved credential
-- The selected runtime CLI (`codex` or `claude`) on `PATH`; the installer
-  configures the Harvest MCP endpoint automatically
+- The selected host installed; Codex and Claude require their CLI on `PATH`.
+  OpenClaw requires the additional native registration step above
 
 ## Credential setup
 
