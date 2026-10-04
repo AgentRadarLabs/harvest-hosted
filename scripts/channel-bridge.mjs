@@ -4,7 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { openParticipantPageTunnel } from './participant-page-tunnel.mjs';
 
 const options = parseOptions(process.argv.slice(2));
-const token = readToken(options.tokenEnv);
+const token = await readToken(options.tokenEnv);
 const local = new Server(
   { name: 'harvest-hosted', version: '0.3.0' },
   {
@@ -231,12 +231,32 @@ function parseOptions(values) {
   return parsed;
 }
 
-function readToken(tokenEnv) {
+async function readToken(tokenEnv) {
   const configured = process.env[tokenEnv] || readSavedToken();
   if (!/^hvst_live_[A-Za-z0-9_-]{43}$/.test(configured || '')) {
-    fail('no valid Harvest credential; complete registration first');
+    await rejectMissingCredential();
   }
   return configured;
+}
+
+async function rejectMissingCredential() {
+  const message = 'No valid Harvest credential. Create an agent at https://tryharvest.ai/agents, '
+    + 'then run node <Harvest skill directory>/register.mjs import-env with HARVEST_TOKEN in the environment.';
+  process.stderr.write(`harvest-hosted bridge: ${message}\n`);
+  // Clients such as Claude hide child stderr, so reject initialize through the protocol too.
+  const transport = new StdioServerTransport();
+  const deadline = setTimeout(() => process.exit(1), 5_000);
+  process.stdin.once('end', () => process.exit(1));
+  transport.onerror = () => process.exit(1);
+  transport.onmessage = async (request) => {
+    if (!Object.hasOwn(request, 'id') || !request.method) return;
+    await transport.send({ jsonrpc: '2.0', id: request.id, error: { code: ErrorCode.InternalError, message } });
+    clearTimeout(deadline);
+    await transport.close();
+    process.exit(1);
+  };
+  await transport.start();
+  await new Promise(() => {});
 }
 
 function readSavedToken() {

@@ -12,7 +12,7 @@ const sourcePath = resolve(repositoryRoot, 'skills', 'harvest', 'SKILL.md');
 const registrationSourcePath = resolve(repositoryRoot, 'scripts', 'register.mjs');
 const mcpHeadersSourcePath = resolve(repositoryRoot, 'scripts', 'mcp-headers.mjs');
 const bridgeSourcePath = resolve(repositoryRoot, 'scripts', 'channel-bridge.bundle.mjs');
-// Exact SHA-256 values from the published 0.2.5/0.2.6 tarballs, not Git history.
+// Exact SHA-256 values from the published 0.2.5/0.2.6/0.2.7 tarballs, not Git history.
 const KNOWN_INSTALLED_SHA256 = {
   'SKILL.md': ['67a394a5310d21357219c1a246f37af6528618c68eca2b33ed16d6efb919d354'],
   'register.mjs': ['da59b75822b96eed4d6195e38d6a0b927c3cde063e354ca7630d85f1597d3bf5'],
@@ -20,6 +20,7 @@ const KNOWN_INSTALLED_SHA256 = {
   'channel-bridge.mjs': [
     '7974ad5893df1bf55d94715d921e3b61834bf2dedbb644cf83d4123c159706d5',
     '297702a654f7deba15584566ae770885bf915eb8803a495588187949fb8a5048',
+    'fe911c7bd91434e807c9b459101a63888feb938716658d7e8417267a43f79d1b',
   ],
 };
 const args = process.argv.slice(2);

@@ -4,6 +4,8 @@ This is the official first-party distribution repository for Harvest AI at
 https://tryharvest.ai. Install the Harvest skill so your existing agent can join
 and participate in a Google Meet that you are authorized to access.
 
+For product integrations, follow the [partner quickstart](docs/partner-quickstart.md): install, join, hear/speak, account API and capacity contracts.
+
 ## Primary setup
 
 Create the credential first:
@@ -15,13 +17,13 @@ Create the credential first:
 Install the pinned tarball served by Harvest for your runtime:
 
 ```sh
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.7.tgz --runtime codex
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.7.tgz --runtime claude-code
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.8.tgz --runtime codex
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.8.tgz --runtime claude-code
 ```
 
 Run only the command for your runtime. The installer writes the skill and MCP
 bridge. It does not create an account, access a mailbox, or issue a credential.
-If upgrading an unmodified 0.2.5 or 0.2.6 installation, append `--upgrade`.
+If upgrading an unmodified 0.2.5, 0.2.6 or 0.2.7 installation, append `--upgrade`.
 The installer checks published-file hashes, backs up the old skill, and refuses
 unknown or edited files. Restart your runtime to load the new bridge.
 
@@ -114,7 +116,7 @@ harvest-hosted claude --model opus -p "join the meeting and take notes"
 Pinned, without installing anything:
 
 ```sh
-npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.7.tgz claude
+npx --yes https://tryharvest.ai/client-harvest-hosted-0.2.8.tgz claude
 ```
 
 It puts no credential on the command line — authorization stays in the MCP
