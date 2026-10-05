@@ -50,6 +50,18 @@ export class HarvestApi {
       idempotencyKey === undefined ? {} : { 'Idempotency-Key': idempotencyKey });
   }
   configureAgent(id, config) { return this.request(`/api/agents/${encodeURIComponent(id)}/identity`, 'PATCH', config); }
+  join(agentId, { meetingUrl, joinAt, lobbyTimeoutSeconds, brief }) {
+    return this.request(`/api/agents/${encodeURIComponent(agentId)}/sessions`, 'POST', {
+      meeting_url: meetingUrl, join_at: joinAt, lobby_timeout_s: lobbyTimeoutSeconds, brief,
+    });
+  }
+  session(agentId, sessionId) {
+    return this.request(`/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`);
+  }
+  sessions(agentId) { return this.request(`/api/agents/${encodeURIComponent(agentId)}/sessions`); }
+  cancel(agentId, sessionId) {
+    return this.request(`/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`, 'DELETE');
+  }
   issueAgentToken(id) { return this.request(`/api/agents/${encodeURIComponent(id)}/credentials`, 'POST'); }
   revokeAgentToken(id, credentialId) {
     return this.request(`/api/agents/${encodeURIComponent(id)}/credentials/${encodeURIComponent(credentialId)}/revoke`, 'POST');

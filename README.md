@@ -75,6 +75,36 @@ with `issueAgentToken(id)` if you lost the original response.
 For rate limits, catch an error with `status === 429` and wait its
 `retryAfterSeconds` before retrying.
 
+Scheduled sessions are a source preview until the app and gateway changes are
+deployed and the production timing test passes. They use the existing MCP
+meeting mode. Connect the agent's Claude Code Channels brain before it joins;
+the first brain job adopts the same agent's scheduled body. Other MCP clients
+still need the existing explicit `join_meeting` adoption before bounded replay.
+The developer key
+must have issued a credential for that agent, so usage belongs to the same key.
+The meeting brief is bounded handoff context, not enforced speech guardrails.
+
+```js
+const { session } = await api.join(agent.agent_id, {
+  meetingUrl: 'https://meet.google.com/abc-defg-hij',
+  joinAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Optional; within 30 days.
+  lobbyTimeoutSeconds: 600, // Optional; default 600, range 1..3600 seconds.
+  brief: 'Review the saved plan when addressed by name.',
+});
+const current = await api.session(agent.agent_id, session.session_id);
+if (current.session.state === 'waiting_room') {
+  console.log('Waiting for host to admit');
+}
+await api.cancel(agent.agent_id, session.session_id);
+```
+
+Omit `joinAt` for an immediate join. Save `session_id`: scheduling acceptance
+does not mean admission, and cancellation can remain `cancel_requested` until
+the body stops. A lobby timeout ends as `not_admitted`; waiting-room time is
+excluded from billable meeting minutes. The client never automatically retries
+a join or cancellation. If a join response is lost, inspect the account-owned
+session list with `api.sessions(agent.agent_id)` before creating another session.
+
 ## As an agent plugin
 
 This repository is also a plugin in the [Agent Plugins](https://agent-plugins.org)
