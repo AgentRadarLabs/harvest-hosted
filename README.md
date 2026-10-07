@@ -105,6 +105,36 @@ excluded from billable meeting minutes. The client never automatically retries
 a join or cancellation. If a join response is lost, inspect the account-owned
 session list with `api.sessions(agent.agent_id)` before creating another session.
 
+### Create an OPEN meeting (source preview)
+
+This flow requires the matching app and gateway changes; it is not included in
+the pinned 0.2.8 SDK. Once, the account owner opens
+`https://tryharvest.ai/api/meetings/connect` in a signed-in browser and grants
+Google Meet access. Calendar authorization alone does not grant this permission.
+Google credentials remain in Harvest; keep the developer key on your server.
+
+```js
+const created = await api.createMeeting({ join: true, agentId: agent.agent_id });
+// Save created.room.id and created.room.meeting_url before any further action.
+if (created.join_error) console.error('Room created, agent join failed:', created.join_error);
+else {
+  const current = await api.session(agent.agent_id, created.session.session_id);
+  // Poll this session until state === 'active' before claiming the agent is inside.
+}
+const ended = await api.endMeeting(created.room.id);
+// If ended.room.state === 'closing', repeat endMeeting after a delay.
+// Only ended.room.state === 'closed' confirms the bot stopped and conference ended.
+```
+
+`createMeeting()` creates a room without an agent. Its response contains
+`room: { id, meeting_url, space_name, access_type: 'OPEN', state }`; an optional
+join adds `session` or an honest `join_error` while preserving the room.
+Creation does not prove admission. Room mutations are never automatically
+retried: a lost create response may already have created a room.
+`endMeeting(roomId)` cancels its bound session and ends only that owned
+conference. HTTP 202 with `state: 'closing'` means cleanup remains pending;
+repeat that same end request until `state: 'closed'` is returned.
+
 ### Webhooks and artifacts (source preview)
 
 These methods require matching app and gateway releases plus runtime acceptance.

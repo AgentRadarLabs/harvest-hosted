@@ -72,6 +72,8 @@ export class HarvestApi {
       idempotencyKey === undefined ? {} : { 'Idempotency-Key': idempotencyKey });
   }
   configureAgent(id, config) { return this.request(`/api/agents/${encodeURIComponent(id)}/identity`, 'PATCH', config); }
+  createMeeting({ join, agentId } = {}) { return this.request('/api/meetings/open', 'POST', { join, agentId }); }
+  endMeeting(roomId) { return this.request(`/api/meetings/${encodeURIComponent(roomId)}`, 'DELETE'); }
   join(agentId, { meetingUrl, joinAt, lobbyTimeoutSeconds, brief }) {
     return this.request(`/api/agents/${encodeURIComponent(agentId)}/sessions`, 'POST', {
       meeting_url: meetingUrl, join_at: joinAt, lobby_timeout_s: lobbyTimeoutSeconds, brief,

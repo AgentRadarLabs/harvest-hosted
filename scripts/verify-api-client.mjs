@@ -65,6 +65,7 @@ await assert.rejects(offline.agents(), /offline/);
 // Exercise the wire contract through the same HTTP transport consumers use.
 const { createServer } = await import('node:http');
 const received = [];
+let roomEndRequests = 0;
 const deliveryHistory = { deliveries: [{ id: 'delivery-1', endpoint: 'https://hooks.example.com/events',
   account_id: 'synthetic-account', subscription_id: 'wh/1', state: 'dead_letter', attempts: 5,
   created_at: 0, next_attempt_at: 15000, status: 503, last_error: 'http_503',
@@ -85,6 +86,22 @@ const server = createServer(async (req, res) => {
   if (req.url === '/api/webhooks/wh%2F1/deliveries') {
     res.writeHead(200);
     res.end(JSON.stringify(deliveryHistory));
+    return;
+  }
+  if (req.url === '/api/meetings/open') {
+    const { join, agentId } = JSON.parse(body);
+    res.writeHead(201);
+    res.end(JSON.stringify({ room: { id: 'room/1', meeting_url: 'https://meet.google.com/abc-defg-hij',
+      space_name: 'spaces/owned', access_type: 'OPEN', state: 'open' },
+      ...(join ? agentId === 'unavailable' ? { join_error: 'unavailable' }
+        : { session: { session_id: 'session/2', state: 'scheduled' } } : {}),
+    }));
+    return;
+  }
+  if (req.url === '/api/meetings/room%2F1') {
+    roomEndRequests += 1;
+    res.writeHead(roomEndRequests === 1 ? 202 : 200);
+    res.end(JSON.stringify({ room: { id: 'room/1', state: roomEndRequests === 1 ? 'closing' : 'closed' } }));
     return;
   }
   const state = req.method === 'POST' ? 'scheduled' : req.method === 'DELETE' ? 'cancel_requested' : 'waiting_room';
@@ -133,6 +150,26 @@ try {
   await assert.rejects(local.webhookDeliveries('missing'), { status: 404, message: /not_found/ });
   assert.equal(received.length, 12, 'a history failure performs exactly one authenticated request');
 
+  const created = await local.createMeeting();
+  assert.equal(created.room.access_type, 'OPEN');
+  assert.deepEqual(received[12], {
+    url: '/api/meetings/open', method: 'POST', authorization: 'Bearer hvst_dev_test', body: '{}',
+  });
+  const joined = await local.createMeeting({ join: true, agentId: 'agent/1' });
+  assert.equal(joined.session.state, 'scheduled', 'dispatch acceptance is not active admission');
+  assert.deepEqual(JSON.parse(received[13].body), { join: true, agentId: 'agent/1' });
+  const partial = await local.createMeeting({ join: true, agentId: 'unavailable' });
+  assert.equal(partial.room.id, 'room/1', 'a join failure retains the created room');
+  assert.equal(partial.join_error, 'unavailable');
+  assert.equal((await local.endMeeting(created.room.id)).room.state, 'closing');
+  assert.deepEqual(received[15], {
+    url: '/api/meetings/room%2F1', method: 'DELETE', authorization: 'Bearer hvst_dev_test', body: '',
+  });
+  await assert.rejects(local.endMeeting('missing'), { status: 404, message: /not_found/ });
+  assert.equal(received.length, 17, 'room mutations are never automatically retried');
+  assert.equal((await local.endMeeting(created.room.id)).room.state, 'closed', 'only closed confirms cleanup');
+  assert.equal(received.length, 18, 'cleanup is retried only when the caller explicitly requests it');
+
   // Fixed vector emitted by harvest-bot createSignedWebhook, not by the SDK helper under test.
   const signed = { event: 'session.waiting_room', idempotency_key: 'operation-own:session.waiting_room',
     occurred_at: '2026-10-07T12:00:00.000Z', payload: { operation_id: 'operation-own', meeting_url: 'https://meet.google.com/abc-defg-hij' },
@@ -159,4 +196,4 @@ try {
 } finally {
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 }
-console.log('PASS API client: scheduled/immediate join, status, cancellation, artifacts, webhooks/history, bot-compatible signatures, encoded IDs, authenticated HTTP, no retry');
+console.log('PASS API client: room creation/cleanup, scheduled/immediate join, status, cancellation, artifacts, webhooks/history, bot-compatible signatures, encoded IDs, authenticated HTTP, no retry');
