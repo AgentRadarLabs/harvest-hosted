@@ -1,0 +1,14 @@
+{
+  "name": "harvest",
+  "owner": {
+    "name": "Harvest AI"
+  },
+  "plugins": [
+    {
+      "name": "harvest",
+      "source": "./",
+      "description": "Join a Google Meet you are authorized to attend: hear the room, speak, use meeting chat, and see participants and the shared screen."
+    }
+  ],
+  "description": "Harvest meeting tools and skill for authorized Google Meet sessions"
+}

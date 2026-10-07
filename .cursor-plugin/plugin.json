@@ -1,0 +1,28 @@
+{
+  "name": "harvest",
+  "version": "0.3.0",
+  "description": "Join a Google Meet you are authorized to attend: hear the room, speak, use meeting chat, and see participants and the shared screen.",
+  "author": {
+    "name": "Harvest AI",
+    "url": "https://tryharvest.ai"
+  },
+  "homepage": "https://tryharvest.ai/docs",
+  "repository": "https://github.com/AgentRadarLabs/harvest-hosted",
+  "license": "UNLICENSED",
+  "keywords": [
+    "meeting",
+    "google-meet",
+    "voice",
+    "realtime"
+  ],
+  "mcpServers": {
+    "harvest-hosted": {
+      "command": "node",
+      "args": [
+        "${CURSOR_PLUGIN_ROOT}/scripts/channel-bridge.bundle.mjs",
+        "--url",
+        "https://tryharvest.ai/mcp"
+      ]
+    }
+  }
+}

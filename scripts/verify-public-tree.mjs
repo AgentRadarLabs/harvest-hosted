@@ -18,7 +18,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const allowedTopLevel = new Set([
   '.git', '.github', '.gitignore', 'AGENTS.md', 'CLAUDE.md', 'LICENSE', 'README.md', 'SECURITY.md', 'scripts',
   // Agent Plugins 1.0.0 layout: the manifest, the MCP servers, and the skill in its own directory.
-  'plugin.json', 'mcp.json', 'skills',
+  'plugin.json', 'mcp.json', 'skills', '.claude-plugin', '.cursor-plugin', 'gemini-extension.json',
   // Transcripts a reviewer reads instead of rerunning. Repository-only: the published tarball is
   // an explicit file list, and the packed-contents assertion below fails if anything from here
   // ever reaches npm.
@@ -206,6 +206,7 @@ if (failures.length) {
   for (const failure of failures) console.error(`FAIL ${failure}`);
   process.exit(1);
 }
+execFileSync(process.execPath, [resolve(root, 'scripts/verify-agent-hosts.mjs')], { cwd: root, stdio: 'inherit' });
 console.log(`PASS public-tree files=${files.length} npm_files=${packedFiles.length} possible_secrets=0 isolated_install=green`);
 
 function walk(path) {

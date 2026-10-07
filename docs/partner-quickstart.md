@@ -140,6 +140,41 @@ printf 'header = "Authorization: Bearer %s"\n' "$HARVEST_DEV_KEY" |
   "https://tryharvest.ai/api/agents/$agent_id/identity" > configured-agent.json
 ```
 
+### Webhook receiver and artifact notifications (source preview)
+
+The draft 0.3.0 source exposes `webhooks()`, `createWebhook(endpoint, events)`,
+`deleteWebhook(id)`, `webhookDeliveries(id)` and `artifacts(sessionId)`.
+The pinned 0.2.8 SDK above does not establish support for these methods. Matching
+app/gateway deployment and runtime proof are still required. Keep each subscription's
+one-time secret server-side, alongside its ID; listing does not recover the secret.
+
+Inside your existing JSON receiver, verify the parsed request body against that
+subscription's saved secret before any business action:
+
+```js
+import { verifyWebhookSignature } from 'harvest-hosted/api';
+
+if (!verifyWebhookSignature(envelope, savedSecret)) {
+  return new Response('Invalid webhook signature', { status: 401 });
+}
+// Validate the subscribed event and timestamp, then durably store the envelope.
+// Deduplicate by (subscription.id, envelope.idempotency_key) before replying 2xx.
+```
+
+The signature is the JSON body's `signature`, not an HTTP header. The signed fields
+are `event`, `idempotency_key`, `occurred_at` and `payload`. `occurred_at` retains
+the original event time on retries: choose a future clock-skew tolerance and do not
+reject legitimate delayed retries solely because they are old. In the setup/admin
+path, `api.webhookDeliveries(subscription.id)` reads
+`GET /api/webhooks/:id/deliveries`; it does not replay dead letters.
+After `artifacts.ready`, fetch `api.artifacts(envelope.payload.session_id)`;
+`processing` or `pending` is not artifact readiness.
+
+Use the [canonical webhook quickstart](../README.md#webhooks-and-artifacts-source-preview)
+for setup, the actual event allowlist, retry policy and durable acknowledgement.
+These notifications do not replace native Claude Code Channels or introduce
+another meeting brain. This guide performed no live webhook or artifact request.
+
 ## 6. Capacity, environments and architecture
 
 `HARVEST_HOSTED_MAX_BODIES` is an operator capacity setting, not a client override. Do not assume staging and production have equal capacity, that a configured maximum proves healthy free bodies, or that capacity=1 supports two simultaneous participants. Reserve separate capacity for an independent listener acceptance test. Query `list_sessions`; on `no_free_slot` or `slot_taken`, report the busy state and stop without retrying joins, taking another client's slot or changing servers/credentials. Operators must approve and verify any capacity change against host resources. Staging endpoints and credentials must be explicitly provided; default to the public production endpoint, never a raw infrastructure address.
