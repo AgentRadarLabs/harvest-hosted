@@ -105,6 +105,81 @@ excluded from billable meeting minutes. The client never automatically retries
 a join or cancellation. If a join response is lost, inspect the account-owned
 session list with `api.sessions(agent.agent_id)` before creating another session.
 
+### Webhooks and artifacts (source preview)
+
+These methods require matching app and gateway releases plus runtime acceptance.
+The pinned 0.2.8 installer above does not establish support for this source preview.
+Keep the developer key and each webhook's one-time secret on your server.
+
+```js
+import { HarvestApi, verifyWebhookSignature } from 'harvest-hosted/api';
+
+const api = new HarvestApi({ apiKey: process.env.HARVEST_DEV_KEY });
+const { subscription, secret } = await api.createWebhook(
+  'https://your-server.example/harvest-events',
+  ['session.waiting_room', 'session.in_call', 'session.failed', 'artifacts.ready'],
+);
+// Save subscription.id and secret privately before returning from setup.
+const { webhooks } = await api.webhooks();
+const { deliveries } = await api.webhookDeliveries(subscription.id);
+// After artifacts.ready, use its payload.session_id, not a meeting slot or operation ID:
+// const artifacts = await api.artifacts(envelope.payload.session_id);
+// await api.deleteWebhook(subscription.id); // Deactivates future event enqueueing.
+```
+
+Inside your existing JSON receiver, `envelope` is the parsed request body and
+`savedSecret` is the secret stored during creation:
+
+```js
+if (!verifyWebhookSignature(envelope, savedSecret)) {
+  return new Response('Invalid webhook signature', { status: 401 });
+}
+// Validate the subscribed event and timestamp, then commit to your durable inbox.
+// Acknowledge with 2xx only after that commit succeeds, including stored duplicates.
+```
+
+Endpoints must use public HTTPS with port 443 and no URL credentials. Each account
+can have two active endpoints; duplicate active endpoint URLs are rejected.
+
+The signature is in the JSON body. Its five envelope fields are `event`,
+`idempotency_key`, `occurred_at`, `payload`, and `signature`. The helper verifies
+HMAC-SHA256 over the first four fields using canonical JSON and a Base64 signature;
+pass the original secret string, not a decoded secret, and do not sign raw HTTP
+bytes or look for a signature header. Session lifecycle payloads contain
+`meeting_url` and `operation_id`. `artifacts.ready` carries `payload.session_id`.
+Only the first four envelope fields are authenticated; ignore extra top-level fields.
+
+Verify the signature first, then check the event is one you subscribed to. In a
+durable inbox, atomically insert using `(subscription.id, idempotency_key)` as the
+unique key before acknowledging with 2xx. An already stored duplicate should also
+receive 2xx. Process that inbox separately so a delivery retry cannot repeat the
+same action. The verification helper checks the signature and envelope shape; it
+does not deduplicate events, enforce timestamps, or perform your business action.
+
+`occurred_at` is the original event's ISO timestamp, retained on retries, not a
+fresh delivery timestamp. Reject invalid timestamps and choose a permitted future
+clock skew for your receiver. A blanket short past-age cutoff can reject legitimate
+delayed deliveries after an outage. Retain deduplication records for as long as your
+receiver accepts old events. Do not treat arrival order as event order.
+
+Current gateway defaults allow five attempts, with exponential retry delays starting
+at one second. HTTP 408, 425, 429, 5xx and transport failures are retryable; other
+non-2xx responses become `dead_letter`. History reports `queued`, `delivered` or
+`dead_letter`, with `attempts`, `next_attempt_at`, and optional `status`/`last_error`.
+History is read-only; this SDK does not replay a dead letter. Deactivation does not
+cancel already queued deliveries. The client never retries webhook mutations
+automatically; after a lost creation response, inspect `webhooks()` before creating
+another endpoint. The secret is returned only on creation, not recovered by listing.
+
+Accepted subscription events are `meeting.completed`, `transcript.final`,
+`participant.joined`, `participant.left`, `chat.message`, `session.joining`,
+`session.waiting_room`, `session.in_call`, `session.left`, `session.failed`,
+`speech.started`, `speech.completed`, `participant_command`, and `artifacts.ready`.
+An accepted subscription is not proof that its event producer is deployed.
+Webhooks are integration notifications; the original Claude Code brain still uses
+native Channels. Artifact `processing` or `pending` does not mean ready, and
+native text marked `generated` with `delivery: "unverified"` is not proof of heard speech.
+
 ## As an agent plugin
 
 This repository is also a plugin in the [Agent Plugins](https://agent-plugins.org)

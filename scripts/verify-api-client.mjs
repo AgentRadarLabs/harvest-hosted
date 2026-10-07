@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { HarvestApi } from './api-client.mjs';
+import { createHmac } from 'node:crypto';
+import { HarvestApi, verifyWebhookSignature } from './api-client.mjs';
 
 const calls = [];
 const testKey = ['hvst', 'dev', 'test'].join('_');
@@ -64,6 +65,13 @@ await assert.rejects(offline.agents(), /offline/);
 // Exercise the wire contract through the same HTTP transport consumers use.
 const { createServer } = await import('node:http');
 const received = [];
+const deliveryHistory = { deliveries: [{ id: 'delivery-1', endpoint: 'https://hooks.example.com/events',
+  account_id: 'synthetic-account', subscription_id: 'wh/1', state: 'dead_letter', attempts: 5,
+  created_at: 0, next_attempt_at: 15000, status: 503, last_error: 'http_503',
+  envelope: { event: 'session.waiting_room', idempotency_key: 'operation-own:session.waiting_room',
+    occurred_at: '2026-10-07T12:00:00.000Z', payload: { operation_id: 'operation-own', meeting_url: 'https://meet.google.com/abc-defg-hij' },
+    signature: '3XKW4AMqiqv/SAD2WPj7eZMSVcGLws2laiGia8tS4sE=' },
+}] };
 const server = createServer(async (req, res) => {
   let body = '';
   for await (const chunk of req) body += chunk;
@@ -72,6 +80,11 @@ const server = createServer(async (req, res) => {
   if (req.url.includes('missing')) {
     res.writeHead(404);
     res.end(JSON.stringify({ reason: 'not_found' }));
+    return;
+  }
+  if (req.url === '/api/webhooks/wh%2F1/deliveries') {
+    res.writeHead(200);
+    res.end(JSON.stringify(deliveryHistory));
     return;
   }
   const state = req.method === 'POST' ? 'scheduled' : req.method === 'DELETE' ? 'cancel_requested' : 'waiting_room';
@@ -104,7 +117,46 @@ try {
   await local.sessions('agent/1');
   assert.equal(received[5].url, '/api/agents/agent%2F1/sessions');
   assert.equal(received[5].method, 'GET');
+  await local.artifacts('sess/1');
+  assert.equal(received[6].url, '/api/sessions/sess%2F1/artifacts');
+  await local.webhooks();
+  assert.equal(received[7].url, '/api/webhooks');
+  await local.createWebhook('https://hooks.example.com/events', ['session.waiting_room']);
+  assert.deepEqual(JSON.parse(received[8].body), { endpoint: 'https://hooks.example.com/events', events: ['session.waiting_room'] });
+  await local.deleteWebhook('wh/1');
+  assert.equal(received[9].url, '/api/webhooks/wh%2F1');
+  assert.equal(received[9].method, 'DELETE');
+  assert.deepEqual(await local.webhookDeliveries('wh/1'), deliveryHistory);
+  assert.equal(received[10].url, '/api/webhooks/wh%2F1/deliveries');
+  assert.equal(received[10].method, 'GET');
+  assert.equal(received[10].authorization, 'Bearer hvst_dev_test');
+  await assert.rejects(local.webhookDeliveries('missing'), { status: 404, message: /not_found/ });
+  assert.equal(received.length, 12, 'a history failure performs exactly one authenticated request');
+
+  // Fixed vector emitted by harvest-bot createSignedWebhook, not by the SDK helper under test.
+  const signed = { event: 'session.waiting_room', idempotency_key: 'operation-own:session.waiting_room',
+    occurred_at: '2026-10-07T12:00:00.000Z', payload: { operation_id: 'operation-own', meeting_url: 'https://meet.google.com/abc-defg-hij' },
+    signature: '3XKW4AMqiqv/SAD2WPj7eZMSVcGLws2laiGia8tS4sE=' };
+  assert.equal(verifyWebhookSignature(signed, 'secret'), true);
+  assert.equal(verifyWebhookSignature({ ...signed, payload: { meeting_url: signed.payload.meeting_url, operation_id: 'operation-own' } }, 'secret'), true);
+  assert.equal(verifyWebhookSignature(signed, 'other'), false);
+  const nestedSigned = { event: 'chat.message', idempotency_key: 'chat-1', occurred_at: '2026-10-07T12:00:00.000Z',
+    payload: { z: [{ b: 'quoted "value"', a: 'line\n' }], a: { z: 2, a: 1 } },
+    signature: 'g8E3KTp+ZQzCR7R9dWIudg8TTFV2dsXVqPeQnftW+LM=' };
+  assert.equal(verifyWebhookSignature(nestedSigned, 'secret'), true);
+  assert.equal(verifyWebhookSignature({ ...nestedSigned, payload: { a: { a: 1, z: 2 }, z: [{ a: 'line\n', b: 'quoted "value"' }] } }, 'secret'), true);
+  for (const altered of [ { ...signed, event: 'session.left' }, { ...signed, idempotency_key: 'another-event' },
+    { ...signed, occurred_at: '2026-10-07T12:00:01.000Z' }, { ...signed, payload: { ...signed.payload, operation_id: 'foreign' } },
+    { ...signed, signature: 'bad' }, { ...signed, signature: 'é'.repeat(44) },
+  ]) assert.equal(verifyWebhookSignature(altered, 'secret'), false);
+  for (const badKey of [ undefined, null, '', {}, 42 ]) assert.equal(verifyWebhookSignature(signed, badKey), false);
+  for (const malformed of [ null, [], {}, { ...signed, signature: undefined }, { ...signed, event: null } ]) {
+    assert.equal(verifyWebhookSignature(malformed, 'secret'), false);
+  }
+  const malformedSigned = { event: 'session.waiting_room', idempotency_key: 'k', occurred_at: 't', payload: null,
+    signature: createHmac('sha256', 'secret').update('{"event":"session.waiting_room","idempotency_key":"k","occurred_at":"t","payload":null}').digest('base64') };
+  assert.equal(verifyWebhookSignature(malformedSigned, 'secret'), false, 'a correctly signed malformed payload is still rejected');
 } finally {
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 }
-console.log('PASS API client: scheduled/immediate join, status, cancellation, encoded IDs, authenticated HTTP, no retry');
+console.log('PASS API client: scheduled/immediate join, status, cancellation, artifacts, webhooks/history, bot-compatible signatures, encoded IDs, authenticated HTTP, no retry');

@@ -1,4 +1,26 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 const DEFAULT_URL = 'https://tryharvest.ai';
+
+function canonicalJson(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  const entries = Object.entries(value).filter(([, item]) => item !== undefined).sort(([left], [right]) => left.localeCompare(right));
+  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(',')}}`;
+}
+
+export function verifyWebhookSignature(envelope, secret) {
+  if (typeof secret !== 'string' || !secret || !envelope || typeof envelope !== 'object' || Array.isArray(envelope)
+    || typeof envelope.event !== 'string' || !envelope.event.trim()
+    || typeof envelope.idempotency_key !== 'string' || !envelope.idempotency_key.trim()
+    || typeof envelope.occurred_at !== 'string' || !envelope.occurred_at.trim()
+    || !envelope.payload || typeof envelope.payload !== 'object' || Array.isArray(envelope.payload)
+    || typeof envelope.signature !== 'string') return false;
+  const unsigned = { event: envelope.event, idempotency_key: envelope.idempotency_key, occurred_at: envelope.occurred_at, payload: envelope.payload };
+  const expected = Buffer.from(createHmac('sha256', secret).update(canonicalJson(unsigned)).digest('base64'));
+  const actual = Buffer.from(envelope.signature);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
 
 export class HarvestApi {
   constructor({ apiKey, baseUrl = DEFAULT_URL, fetch: request = globalThis.fetch }) {
@@ -62,6 +84,11 @@ export class HarvestApi {
   cancel(agentId, sessionId) {
     return this.request(`/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`, 'DELETE');
   }
+  artifacts(sessionId) { return this.request(`/api/sessions/${encodeURIComponent(sessionId)}/artifacts`); }
+  webhooks() { return this.request('/api/webhooks'); }
+  createWebhook(endpoint, events) { return this.request('/api/webhooks', 'POST', { endpoint, events }); }
+  deleteWebhook(id) { return this.request(`/api/webhooks/${encodeURIComponent(id)}`, 'DELETE'); }
+  webhookDeliveries(id) { return this.request(`/api/webhooks/${encodeURIComponent(id)}/deliveries`); }
   issueAgentToken(id) { return this.request(`/api/agents/${encodeURIComponent(id)}/credentials`, 'POST'); }
   revokeAgentToken(id, credentialId) {
     return this.request(`/api/agents/${encodeURIComponent(id)}/credentials/${encodeURIComponent(credentialId)}/revoke`, 'POST');
