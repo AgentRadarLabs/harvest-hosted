@@ -240,6 +240,14 @@ a broken bot.
 
 ## When `speak` is refused
 
+On a `speech.interrupted` channel or replay event, match `say_id` and meeting
+scope to the interrupted reply. `elapsed_ms` is measured playback;
+`sentence_index` is zero-based. Sentence and interrupter fields can be `null`.
+Never fill unknown fields from guesses. The unsaid tail was discarded and
+listener hearing is unverified. Preserve pending work, listen to the latest
+human turn and answer it without automatically resuming the old reply.
+Older servers can expose the same evidence inside `speech_terminal.result.interruption`.
+
 A `rejected` result can follow partial playback. It confirms neither full
 delivery nor that nothing was heard. Match any `say_id` to its
 `speech_terminal` event. Read `reason` or `error` and act:
