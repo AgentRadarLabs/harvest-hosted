@@ -64,7 +64,7 @@ After a confirmed final addressed to the agent, send one concise reply through `
 {"name":"speak","arguments":{"session_id":"primary","text":"The draft is saved. The release gate is still unverified.","await_playback":false}}
 ```
 
-An early `accepted` or `started` receipt is not completion: match its `say_id` to the later `speech_terminal` event. Even completed playback is not independent listener proof. For integration acceptance retain a listener recording and matching transcript, then verify interruption and cleanup. A rejected reply was not heard; respect stale/floor/rate-limit reasons and answer the newest turn rather than automatically replaying old speech. Never run concurrent speaks or use `interrupt` to seize the floor.
+An early `accepted` or `started` receipt is not completion: match its `say_id` to the later `speech_terminal` event. Even completed playback is not independent listener proof. For integration acceptance retain a listener recording and matching transcript, then verify interruption and cleanup. A rejected reply can follow partial playback; it does not prove that nothing was heard. If an `interruption` report is present, preserve its measured `played_ms`, optional cut `sentence` and known `interrupter`; missing alignment stays unknown and listener hearing stays unverified. The unsaid tail was discarded. Respect stale/floor/rate-limit reasons and answer the newest turn rather than automatically replaying old speech. Never run concurrent speaks or use `interrupt` to seize the floor.
 
 Before ending, close any participant page, call `leave_meeting`, and check the returned cleanup outcome. A terminal meeting event also ends the reader. Do not end the agent's listening turn while its meeting is still active.
 

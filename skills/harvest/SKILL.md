@@ -228,7 +228,8 @@ a broken bot.
 - **Pass `await_playback: false` when you want to keep listening while you talk.**
   The early receipt may say `started` or only `accepted`; neither proves that
   playback completed. Match its `say_id` to the later `speech_terminal` event
-  before claiming the reply was heard. Go straight back to the reader.
+  before claiming playback completed. Listener hearing still needs independent
+  proof. Go straight back to the reader.
 - **Never narrate a tool call.** Do not say "Hand's up", "Lowered", or "Sent it
   to the chat" — raising a hand and posting in chat are already visible to
   everyone in the meeting, and the commentary costs a whole speaking turn.
@@ -239,8 +240,14 @@ a broken bot.
 
 ## When `speak` is refused
 
-A `rejected` result means **nothing was heard**. Never treat it as delivered,
-and never fall silent because of it. Read `reason` and act:
+A `rejected` result can follow partial playback. It confirms neither full
+delivery nor that nothing was heard. Match any `say_id` to its
+`speech_terminal` event. Read `reason` or `error` and act:
+
+- `interrupted`: use the measured `interruption.played_ms` when present. Its
+  `sentence` can be unknown; never estimate it from text length or elapsed
+  duration. Listener hearing remains unverified. The unsaid tail was discarded;
+  listen and answer the newest human turn without automatically resuming it.
 
 - `stale` — the reply took too long to reach the floor. Do not retry the old
   text; say a shorter, fresh line about what the human just said.
