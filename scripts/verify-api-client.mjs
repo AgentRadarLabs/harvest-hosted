@@ -193,6 +193,9 @@ try {
   const malformedSigned = { event: 'session.waiting_room', idempotency_key: 'k', occurred_at: 't', payload: null,
     signature: createHmac('sha256', 'secret').update('{"event":"session.waiting_room","idempotency_key":"k","occurred_at":"t","payload":null}').digest('base64') };
   assert.equal(verifyWebhookSignature(malformedSigned, 'secret'), false, 'a correctly signed malformed payload is still rejected');
+  const policyBrief = { goal: 'Explain approved pricing', facts: ['Price is $100'], dont_say: ['discount'], speak_policy: 'only_when_addressed', language: 'en' };
+  await local.join('agent/1', { meetingUrl: 'https://meet.google.com/abc-defg-hij', brief: policyBrief });
+  assert.deepEqual(JSON.parse(received.at(-1).body).brief, policyBrief, 'the SDK must preserve the strict brief unchanged');
 } finally {
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 }
