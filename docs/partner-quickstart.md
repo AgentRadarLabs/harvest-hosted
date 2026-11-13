@@ -72,7 +72,7 @@ Before ending, close any participant page, call `leave_meeting`, and check the r
 
 ## 5. AgentRadar management API: catalog, create and configure
 
-Keep account-wide `HARVEST_DEV_KEY` on the partner server. The per-agent `HARVEST_TOKEN` only connects that agent to MCP. Obtain written embedding permission under the [proprietary license](https://github.com/AgentRadarLabs/harvest-hosted/blob/main/LICENSE) and an account-scoped developer credential before running management requests. Cross-account access must remain denied.
+Keep account-wide `HARVEST_DEV_KEY` on the partner server. The per-agent `HARVEST_TOKEN` only connects that agent to MCP. Partners other than AgentRadar must obtain written embedding permission under the [proprietary license](https://github.com/AgentRadarLabs/harvest-hosted/blob/main/LICENSE); AgentRadar needs none, because the license's AgentRadar grant already lets it embed, modify and redistribute the Harvest client. Every partner, AgentRadar included, needs an account-scoped developer credential before running management requests. Cross-account access must remain denied.
 
 Current evidence limitation: the protected catalog route returns 401 without a credential; this quickstart did not perform authenticated account-management requests. The existing public developer-key setup link `https://tryharvest.ai/docs/api` returned 404 on 2026-10-03. Developer credential provisioning, partner smoke and legal acceptance remain tracked in [HAR-151](https://linear.app/tryharvest-ai/issue/HAR-151/b2b-developer-api-agentradar-can-discover-voices-and-manage-harvest). Do not treat these snippets as proof that onboarding is complete.
 
