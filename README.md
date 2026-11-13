@@ -30,7 +30,9 @@ unknown or edited files. Restart your runtime to load the new bridge.
 ## Developer API
 
 For a product integration, first get written permission from Harvest AI under
-the [license](LICENSE), then sign in at https://tryharvest.ai/docs/api and create
+the [license](LICENSE); AgentRadar needs none, because the license already lets
+it embed, modify and redistribute the Harvest client. Then sign in at
+https://tryharvest.ai/docs/api and create
 an account developer key. Keep `HARVEST_DEV_KEY` on your server. It grants
 account-wide agent management; the per-agent `HARVEST_TOKEN` is for the MCP
 meeting connection only.
@@ -364,7 +366,7 @@ Alternatively, copy the complete authorized checkout into
 `.cursor-plugin/plugin.json` uses `${CURSOR_PLUGIN_ROOT}`. Do not symlink to a
 checkout outside the local plugins directory. Admin policy can block local
 plugins. Cursor's public marketplace requires open-source plugins; Harvest's
-proprietary license has not changed, so no marketplace approval is claimed.
+license remains proprietary, so no marketplace approval is claimed.
 
 ### Gemini CLI
 
@@ -495,4 +497,6 @@ security proof.
 This is proprietary software, not open source. One local clone and unmodified
 installation for authorized Harvest use are permitted. Copying, modification,
 forking, redistribution, mirroring, derivative works, and commercial reuse are
-otherwise prohibited. See [LICENSE](LICENSE).
+otherwise prohibited. AgentRadar (AgentRadar Labs and its products) is the one
+exception: it may use, embed, modify and redistribute this software without
+separate written permission, fee or partner terms. See [LICENSE](LICENSE).
